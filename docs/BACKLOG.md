@@ -40,4 +40,4 @@ Implemented baseline: scalar models, typed repositories, local role checks, Memo
 | [#32](https://github.com/jeffadickson/Loom/issues/32) | META-05/10 | Application packaging and singleton/tree/virtual models |
 | [#33](https://github.com/jeffadickson/Loom/issues/33) | GOV-01 | Resolve license and remaining architecture decisions |
 
-The #2–#11 batch has implementation and verification progress recorded in [NEXT_TEN_PROGRESS.md](NEXT_TEN_PROGRESS.md). #5 timing/quality masks meets its listed acceptance criteria; all other issues in this batch retain explicit remaining work. The new server providers compile; live-server validation is not yet claimed.
+The #2–#11 batch has implementation and verification progress recorded in [NEXT_TEN_PROGRESS.md](NEXT_TEN_PROGRESS.md). #5 timing/quality masks meets its listed acceptance criteria; all other issues in this batch retain explicit remaining work. The new server providers compile and the initial PostgreSQL 16 / SQL Server 2022 live CI suite passed; broader conformance and migrations remain open.

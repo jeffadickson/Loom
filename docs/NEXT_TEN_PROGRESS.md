@@ -12,8 +12,8 @@ This batch advances all ten issues. It does **not** complete all ten. #5 meets i
 | #7 | ModelTool CLI, MSBuild target, stable generated IDs, unchanged-output preservation, handwritten-file protection, generated-model compile fixture and CI step | Precise source diagnostics for hooks/stale bindings; removed-model cleanup and fuller incremental build tracking |
 | #8 | Descriptions, text lengths, numeric bounds, create-only defaults, attribute/generator/settings support; deterministic ZIP timestamps/order | Conditional display; dedicated typed designer controls; transactional constraint-change preflight |
 | #9 | Stable-ID scalar query AST, authorized API, typed equality selectors, parameterized SQLite pushdown with exact decimal ordering, Memory parity | Index planning/EXPLAIN coverage, paged link search, migrate legacy List/report paths to provider queries |
-| #10 | PostgreSQL dialect in shared server provider, serializable CRUD/audit/optimistic concurrency, exact JSON numerics; live CI definition | Observe live CI; migrations/drift/concurrency coverage, server-side queries/indexes, dedicated blob representation and version matrix |
-| #11 | SQL Server dialect using the same provider and conformance executable; live CI definition | Observe live CI; migration suite and full collation/concurrency coverage |
+| #10 | PostgreSQL dialect in shared server provider, serializable CRUD/audit/optimistic concurrency, exact JSON numerics; live CI definition | Migrations/drift/concurrency coverage, server-side queries/indexes, dedicated blob representation and version matrix |
+| #11 | SQL Server dialect using the same provider and conformance executable; live CI definition | Migration suite and full collation/concurrency coverage |
 
 ## Verification
 
@@ -21,7 +21,7 @@ Local verification: **488 framework checks passed**; browser measurement editing
 
 The framework test executable covers the existing suite plus measurement round trips, migration refusals, array ranges and bounds, timing masks, dataset authorization, raw-record immutability, constraints, and Memory/SQLite query parity. Browser automation edits and reloads the new measurement controls, preserves exact money/integers, uploads/downloads bytes, and verifies memory reset. The MSBuild target generates and compiles an immutable attributed scientific model.
 
-Server-provider and conformance projects restore and compile locally. No PostgreSQL or SQL Server daemon is available in this execution environment. The checked-in workflow provisions PostgreSQL 16 and SQL Server 2022. A workflow definition is not evidence of a passing live test; #10/#11 remain open until hosted results and remaining coverage are reviewed.
+Server-provider and conformance projects restore and compile locally. Hosted CI for implementation commit `a7c0829` also passed: [framework/build/generated models](https://github.com/jeffadickson/Loom/actions/runs/38603350931) and [live PostgreSQL 16 plus SQL Server 2022](https://github.com/jeffadickson/Loom/actions/runs/38603350918). Both database jobs executed successfully, including their test commands. The shared live suite checks exact money, transactional audit, rollback, authorization, stale writes, uniqueness, reopen durability and audit after deletion. This is initial conformance coverage; #10/#11 remain open for migrations, drift, broader concurrency and other gaps above.
 
 ## Query and constraint contracts
 
