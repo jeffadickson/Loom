@@ -63,7 +63,7 @@ Identity__Email__Password=<secret-configuration>
 ```
 
 SMTP requires TLS. There is no silent sender fallback. Applications can replace
-`IEmailSender` through dependency injection. The fixed PublicOrigin prevents
+`IIdentityEmailTransport` through dependency injection while retaining the durable queue. The fixed PublicOrigin prevents
 request-host poisoning of confirmation and recovery links.
 
 Outside Development, HTTPS is required and the session cookie is Secure.
@@ -117,3 +117,38 @@ role spoofing, CSRF and restart durability. Run it through the normal browser ta
 This increment does not implement tenant membership administration, external-provider
 provisioning, SMTP infrastructure, passwordless login or automatic migration of the
 legacy configured-account list. Those are separate tracked capabilities.
+
+## Durable email delivery
+
+Account email now queues durably. Registration, admin creation and password recovery
+return once the account/queue transaction commits; an unavailable SMTP service is
+retried in the background. The worker starts with the host. No extra service is
+required for a single host.
+
+Administrators can open **Account email delivery** on `/accounts.html` to refresh
+the latest 100 delivery states and cancel pending, unclaimed messages. Cancellation
+cannot recall an email already handed to SMTP. The API is
+`GET /identity-admin/api/email-deliveries` and antiforgery-protected
+`POST /identity-admin/api/email-deliveries/{id}/cancel`.
+Diagnostics intentionally omit addresses, subjects and token-bearing message bodies.
+
+- **Pending:** waiting for a worker or retry; at most five attempts.
+- **Sent:** the configured transport accepted the message, not proof it reached an inbox.
+- **Dead:** retries exhausted or the protected payload could not be read.
+- **Expired:** the 55-minute queue lifetime elapsed before delivery.
+- **Cancelled:** an administrator cancelled unclaimed work.
+
+Retries wait 1, 2, 4 and 8 minutes. A crashed worker's lease becomes reclaimable after
+120 seconds. SMTP delivery may duplicate a message if a crash occurs after SMTP
+acceptance but before acknowledgement. The stable envelope ID is available to custom
+transports for deduplication. Local pickup deduplicates by that ID automatically.
+
+The database stores encrypted envelopes using the same persisted Data Protection
+keys as Identity. Back up the database **and keys**. Terminal messages erase their
+payload; delivery metadata is removed after seven days by the running worker.
+Development pickup files remain your responsibility to remove after testing.
+
+For a different provider, register an `IIdentityEmailTransport` implementation
+after `AddLoomIdentity`. Honor its cancellation token; do not log the envelope.
+Keep the durable `IEmailSender` registration. The current host still validates SMTP
+or explicit development-pickup configuration at startup.

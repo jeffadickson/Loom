@@ -59,8 +59,13 @@ public static class IdentityModule
         });
         builder.Services.AddAntiforgery(o=>o.HeaderName="X-CSRF-TOKEN");
         builder.Services.AddScoped<IdentitySessionRefreshFilter>();
-        builder.Services.AddRazorPages().AddMvcOptions(o=>o.Filters.AddService<IdentitySessionRefreshFilter>());builder.Services.AddAuthorization();
-        builder.Services.AddTransient<IEmailSender,IdentityEmailSender>();
+        builder.Services.AddScoped<IdentityEmailTransactionFilter>();
+        builder.Services.AddRazorPages().AddMvcOptions(o=> { o.Filters.AddService<IdentitySessionRefreshFilter>(); o.Filters.AddService<IdentityEmailTransactionFilter>(); });builder.Services.AddAuthorization();
+        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddScoped<IEmailSender,IdentityEmailOutbox>();
+        builder.Services.AddScoped<IIdentityEmailTransport,IdentityEmailSender>();
+        builder.Services.AddScoped<IdentityEmailDispatcher>();
+        builder.Services.AddHostedService<IdentityEmailWorker>();
         builder.Services.AddRateLimiter(o=>o.AddPolicy("identity",c=>RateLimitPartition.GetFixedWindowLimiter(c.Connection.RemoteIpAddress?.ToString()??"local",_=>new(){PermitLimit=60,Window=TimeSpan.FromMinutes(1),QueueLimit=0})));
         var authority=settings["Oidc:Authority"];
         if(!string.IsNullOrWhiteSpace(authority))

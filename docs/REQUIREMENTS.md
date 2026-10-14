@@ -229,3 +229,23 @@ must not implement their own password cryptography or account recovery tokens.
 
 Team/league/tenant membership remains an application authorization concern;
 authenticating an account does not by itself grant access to another tenant.
+
+### Durable account email (ID-13 / DOC-08, first outbox consumer)
+
+- Account creation and its confirmation/setup message must commit or roll back
+  together, including built-in registration pages and administrator operations.
+- HTTP responses mean **queued**, not delivered. SMTP failure must not lose the
+  recovery request or hold the account database transaction open.
+- Persist protected message payloads using the application's Data Protection keys;
+  no recipient, body, token or raw transport exception in delivery diagnostics.
+- Delivery must survive restart, use exclusive expiring leases, bound retries,
+  stop before token expiry and erase completed/expired/dead-letter payloads.
+- Expose administrator-only delivery metadata and cancellation of unclaimed work,
+  protected by antiforgery and recorded in the administrative audit.
+- Verify migration from the prior account schema, atomic rollback, restart recovery,
+  competing workers, retry timing/exhaustion, expiry and payload protection.
+- State the delivery guarantee accurately: SMTP is at least once. A crash after
+  mail-service acceptance can cause duplicate email; this is not exactly-once delivery.
+
+This increment implements an Identity-specific email queue. General document outbox
+events, durable workflow scheduling and arbitrary application jobs remain open in #24.

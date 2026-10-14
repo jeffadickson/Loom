@@ -18,11 +18,14 @@ public sealed class IdentityAudit
 /// <summary>Separate EF-owned account schema; never part of an editable Loom DocType catalog.</summary>
 public sealed class IdentityDatabase(DbContextOptions<IdentityDatabase> options) : IdentityDbContext<LoomUser>(options)
 {
+    public DbSet<IdentityEmailEntry> EmailOutbox => Set<IdentityEmailEntry>();
     public DbSet<IdentityAudit> Audit => Set<IdentityAudit>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
         builder.Entity<IdentityAudit>().ToTable("LoomIdentityAudit");
+        builder.Entity<IdentityEmailEntry>().ToTable("LoomIdentityEmailOutbox");
+        builder.Entity<IdentityEmailEntry>().HasIndex(e => new { e.Status, e.DueAt });
         builder.Entity<LoomUser>().HasIndex(u=>u.NormalizedEmail).IsUnique();
     }
 }

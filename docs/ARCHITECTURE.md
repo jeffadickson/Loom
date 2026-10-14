@@ -158,3 +158,38 @@ OIDC is optional external authentication through Microsoft's middleware. Externa
 identities do not inherit Loom Admin privileges. Account linking remains the
 explicit Identity flow. League/team membership, invitations and tenant isolation
 are separate authorization requirements, not claims of identity-provider parity.
+
+### Identity email outbox
+
+Account email uses the dedicated Identity database rather than the document store.
+The scoped `IEmailSender` queues a Data Protection-protected envelope. A page filter
+wraps email-producing Identity POST handlers in a database transaction; administrative
+creation/reset endpoints also explicitly transact account/audit/queue writes. The
+transport runs only after commit in a background worker. Applications replace
+`IIdentityEmailTransport` to use another mail provider; replacing `IEmailSender`
+would bypass this durability contract.
+
+The dispatcher claims one due row with a compare-and-set update and a unique lease
+token. A lease lasts 120 seconds; each delivery has a 30-second cancellation budget.
+A worker processes at most ten envelopes per pass, with a two-second idle interval.
+No SQLite write transaction is held during network delivery. Completion updates
+require the same lease token, preventing stale workers from acknowledging a newer
+claim. Cooperative cancellation leaves the lease for recovery after restart.
+
+The five-attempt budget uses one-, two-, four- and eight-minute retry delays.
+Unclaimed envelopes expire 55 minutes after creation, before the default one-hour
+Identity token expiry. Sent, cancelled, expired and dead-letter rows discard their
+protected payload; safe metadata is retained for seven days. Lost Data Protection
+keys cause a sanitized PayloadUnavailable dead letter. Operators request a fresh
+confirmation/reset rather than reviving an expired token.
+
+SMTP cannot participate in the database transaction. A crash between acceptance and
+acknowledgement can duplicate the same envelope, so delivery is at least once.
+Custom transports receive a stable envelope ID for provider-side deduplication.
+Development pickup files use that ID and atomic publication, making repeated pickup
+delivery idempotent. This is not a claim of exactly-once SMTP or inbox delivery.
+
+The additive EmailOutbox EF migration preserves existing users and audit records.
+Delivery diagnostics expose only status, attempt count, timestamps and fixed failure
+codes. Cancellation requires Admin and antiforgery validation and refuses an active
+lease. The general document outbox and scheduler remain separate framework work.

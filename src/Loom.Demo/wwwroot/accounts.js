@@ -4,3 +4,20 @@ async function api(path,method='GET',body){const r=await fetch('/identity-admin/
 function fail(e){$('error').hidden=false;$('error').textContent=e.message}
 async function load(){try{const page=await api('users?skip='+skip);$('accounts').replaceChildren(...page.users.map(user=>{const box=el('section');box.className='account';box.append(el('h2',user.email),el('p',`Account ID: ${user.id}`),el('p',`${user.emailConfirmed?'Email verified':'Awaiting verification'} · ${user.twoFactorEnabled?'MFA enabled':'MFA not enabled'}`));const role=el('select');role.setAttribute('aria-label','Role for '+user.email);for(const name of ['Viewer','Editor','Admin']){const option=el('option',name);role.append(option)}role.value=user.roles[0]||'Viewer';const enabled=el('input');enabled.type='checkbox';enabled.checked=!user.disabled;const label=el('label','Account enabled ');label.append(enabled);const save=el('button','Save access');save.onclick=async()=>{save.disabled=true;try{const result=await api('users/'+user.id,'PUT',{role:role.value,disabled:!enabled.checked});$('status').textContent=result.message;await load()}catch(e){fail(e)}finally{save.disabled=false}};const reset=el('button','Send password reset');reset.onclick=async()=>{reset.disabled=true;try{$('status').textContent=(await api('users/'+user.id+'/reset','POST',{})).message}catch(e){fail(e)}finally{reset.disabled=false}};box.append(role,label,save,reset);return box}));$('count').textContent=`${page.total} accounts`;$('previous').disabled=skip===0;$('next').disabled=skip+50>=page.total}catch(e){fail(e)}}
 $('createAccount').onsubmit=async e=>{e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;try{$('status').textContent=(await api('users','POST',{email:$('email').value,role:$('newRole').value})).message;e.target.reset();await load()}catch(e){fail(e)}finally{button.disabled=false}};$('previous').onclick=()=>{skip=Math.max(0,skip-50);load()};$('next').onclick=()=>{skip+=50;load()};$('auditRefresh').onclick=async()=>{try{$('audit').replaceChildren(...(await api('audit')).map(a=>el('p',`${a.at} · ${a.actor} · ${a.action} · ${a.subject}`)))}catch(e){fail(e)}};(async()=>{try{token=(await api('token')).token;await load()}catch(e){fail(e)}})();
+
+// Delivery diagnostics contain no email addresses or recovery links.
+async function loadDeliveries(){
+    try {
+        const deliveries=await api('email-deliveries');
+        $('emailDeliveries').replaceChildren(...deliveries.map(item=>{
+            const row=el('p',new Date(item.createdAt*1000).toLocaleString()+' · '+item.status+' · '+item.attempts+' attempts'+(item.failureCode?' · '+item.failureCode:''));
+            if(item.status==='Pending'){
+                const cancel=el('button','Cancel queued email');cancel.onclick=async()=>{cancel.disabled=true;try{$('status').textContent=(await api('email-deliveries/'+item.id+'/cancel','POST',{})).message;await loadDeliveries()}catch(e){fail(e)}finally{cancel.disabled=false}};
+                row.append(cancel);
+            }
+            return row;
+        }));
+        if(!deliveries.length)$('emailDeliveries').textContent='No recent account email.';
+    }catch(e){fail(e)}
+}
+$('emailRefresh').onclick=loadDeliveries;

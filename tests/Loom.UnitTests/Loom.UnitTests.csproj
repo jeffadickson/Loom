@@ -6,6 +6,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" PrivateAssets="all" />
     <PackageReference Include="NSubstitute" Version="5.3.0" />
     <ProjectReference Include="../../src/Loom.Sqlite/Loom.Sqlite.csproj" />
+    <ProjectReference Include="../../src/Loom.Identity/Loom.Identity.csproj" />
     <Compile Include="../Shared/RepositoryContract.cs" Link="RepositoryContract.cs" />
   </ItemGroup>
 </Project>

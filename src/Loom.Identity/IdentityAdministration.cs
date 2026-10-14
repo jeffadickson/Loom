@@ -38,6 +38,21 @@ internal static class IdentityAdministration
             return Results.Ok(new{total=await db.Users.CountAsync(),users=users.Select(u=>new{u.Id,u.Email,u.EmailConfirmed,u.Disabled,u.TwoFactorEnabled,roles=roles.Where(r=>r.UserId==u.Id).Select(r=>r.Name).ToArray()})});
         });
         group.MapGet("/audit",async(IdentityDatabase db)=>await db.Audit.OrderByDescending(a=>a.Id).Take(100).ToArrayAsync());
+        // Expose delivery metadata only: never recipients, subjects, bodies or protected payloads.
+        group.MapGet("/email-deliveries",async(IdentityDatabase db)=>await db.EmailOutbox.AsNoTracking()
+            .OrderByDescending(e=>e.CreatedAt).ThenBy(e=>e.Id).Take(100)
+            .Select(e=>new{e.Id,e.Status,e.CreatedAt,e.ExpiresAt,e.DueAt,e.Attempts,e.FailureCode,e.CompletedAt}).ToArrayAsync());
+        group.MapPost("/email-deliveries/{id}/cancel",async(string id,IdentityDatabase db,TimeProvider clock,HttpContext c)=>
+        {
+            var now=clock.GetUtcNow().ToUnixTimeSeconds();
+            await using var tx=await db.Database.BeginTransactionAsync();
+            var changed=await db.EmailOutbox.Where(e=>e.Id==id&&e.Status=="Pending"&&e.LeaseUntil<=now)
+                .ExecuteUpdateAsync(s=>s.SetProperty(e=>e.Status,"Cancelled").SetProperty(e=>e.ProtectedPayload,"")
+                    .SetProperty(e=>e.CompletedAt,now).SetProperty(e=>e.LeaseToken,(string?)null));
+            if(changed==0)return Results.Conflict(new{error="Delivery is active or already completed. Refresh its status."});
+            Audit(db,c,id,"cancel-account-email");await db.SaveChangesAsync();await tx.CommitAsync();
+            return Results.Ok(new{message="Queued email cancelled."});
+        });
         group.MapPost("/users",async(CreateAccount request,UserManager<LoomUser> users,IdentityDatabase db,IEmailSender sender,IConfiguration config,HttpContext c)=>
         {
             if(!IdentityModule.ApplicationRoles.Contains(request.Role))return Results.BadRequest(new{error="Unknown role."});
@@ -45,10 +60,11 @@ internal static class IdentityAdministration
             {
                 var user=new LoomUser{UserName=request.Email,Email=request.Email};
                 IdentityModule.Ensure(await users.CreateAsync(user));IdentityModule.Ensure(await users.AddToRoleAsync(user,request.Role));
-                Audit(db,c,user.Id,"create-account:"+request.Role);await db.SaveChangesAsync();await tx.CommitAsync();
+                Audit(db,c,user.Id,"create-account:"+request.Role);
                 await SendSetup(user,users,sender,config,true);
+                await db.SaveChangesAsync();await tx.CommitAsync();
             }
-            return Results.Ok(new{message="Account created. Confirmation and password setup instructions sent."});
+            return Results.Ok(new{message="Account created. Confirmation and password setup email queued."});
         });
         group.MapPut("/users/{id}",async(string id,ChangeAccount request,UserManager<LoomUser> users,IdentityDatabase db,HttpContext c)=>
         {
@@ -66,9 +82,10 @@ internal static class IdentityAdministration
         });
         group.MapPost("/users/{id}/reset",async(string id,UserManager<LoomUser> users,IdentityDatabase db,IEmailSender sender,IConfiguration config,HttpContext c)=>
         {
+            await using var tx=await db.Database.BeginTransactionAsync();
             var user=await users.FindByIdAsync(id);if(user==null)return Results.NotFound();
             await SendSetup(user,users,sender,config,!user.EmailConfirmed);
-            Audit(db,c,id,"send-password-reset");await db.SaveChangesAsync();return Results.Ok(new{message="Recovery instructions sent."});
+            Audit(db,c,id,"queue-password-reset");await db.SaveChangesAsync();await tx.CommitAsync();return Results.Ok(new{message="Recovery email queued."});
         });
     }
     private static void Audit(IdentityDatabase db,HttpContext c,string id,string action)=>db.Audit.Add(new(){Actor=c.User.FindFirstValue(ClaimTypes.NameIdentifier)!,Subject=id,Action=action,At=DateTimeOffset.UtcNow.ToString("O")});
