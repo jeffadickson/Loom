@@ -46,6 +46,14 @@ public static class IdentityModule
             o.Cookie.Name="Loom.Identity";o.Cookie.HttpOnly=true;o.Cookie.SameSite=SameSiteMode.Lax;
             o.Cookie.SecurePolicy=builder.Environment.IsDevelopment()?CookieSecurePolicy.SameAsRequest:CookieSecurePolicy.Always;
             o.ExpireTimeSpan=TimeSpan.FromHours(1);o.SlidingExpiration=false;
+            o.Events.OnValidatePrincipal=async context=>
+            {
+                await SecurityStampValidator.ValidatePrincipalAsync(context);
+                // Validate every request, but do not emit replacement cookies on
+                // concurrent asset requests. They can overwrite a freshly rotated
+                // MFA/password cookie with the previous security stamp.
+                context.ShouldRenew=false;
+            };
             o.Events.OnRedirectToAccessDenied=c=> { if(c.Request.Path.StartsWithSegments("/api")||c.Request.Path.StartsWithSegments("/identity-admin/api"))c.Response.StatusCode=403;else c.Response.Redirect(c.RedirectUri);return Task.CompletedTask; };
             o.Events.OnRedirectToLogin=c=> { if(c.Request.Path.StartsWithSegments("/api")||c.Request.Path.StartsWithSegments("/identity-admin/api"))c.Response.StatusCode=401;else c.Response.Redirect(c.RedirectUri);return Task.CompletedTask; };
         });
