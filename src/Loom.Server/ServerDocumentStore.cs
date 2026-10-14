@@ -72,10 +72,20 @@ public sealed class ServerDocumentStore : IDocumentStore
                 var result=action(new Session(db,catalog));tx.Commit();return result;
             }
             catch(DbUpdateConcurrencyException){throw new LoomException(409,"Document changed. Reload before saving.");}
+            // Provider execution strategies can wrap transient conflicts even when retries
+            // are disabled. Never replay callbacks/hooks automatically.
+            catch(InvalidOperationException ex)when(ex.InnerException is DbUpdateException or DbException && HasDatabaseConflict(ex))
+            {throw new LoomException(409,"Concurrent transaction or database constraint conflict; retry the whole operation.");}
             catch(DbUpdateException ex)when(ex.InnerException is DbException database && IsConflict(database))
             {throw new LoomException(409,"Concurrent transaction or database constraint conflict; retry the whole operation.");}
             catch(DbException ex)when(IsConflict(ex)){throw new LoomException(409,"Concurrent transaction or database constraint conflict; retry the whole operation.");}
         }
+    }
+    private static bool HasDatabaseConflict(Exception exception)
+    {
+        for(Exception? current=exception;current!=null;current=current.InnerException)
+            if(current is DbException database && IsConflict(database))return true;
+        return false;
     }
     private static bool IsConflict(DbException exception)
     {
