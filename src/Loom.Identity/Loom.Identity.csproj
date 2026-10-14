@@ -8,4 +8,5 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="8.0.11" />
   </ItemGroup>
   <ItemGroup><EmbeddedResource Include="Migrations/InitialAccounts.sql" /></ItemGroup>
+  <ItemGroup><Content Update="packages.lock.json" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" /></ItemGroup>
 </Project>
