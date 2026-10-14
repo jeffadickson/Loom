@@ -24,6 +24,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Loom.Tests", "tests\Loom.Te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Loom.UnitTests", "tests\Loom.UnitTests\Loom.UnitTests.csproj", "{1F426A48-66B6-5350-9B90-340A2EECE689}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Loom.Identity", "src\Loom.Identity\Loom.Identity.csproj", "{ACDB70EF-63BB-4F68-B632-6AE4DE8D0118}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -78,5 +80,9 @@ Global
 		{1F426A48-66B6-5350-9B90-340A2EECE689}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1F426A48-66B6-5350-9B90-340A2EECE689}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1F426A48-66B6-5350-9B90-340A2EECE689}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ACDB70EF-63BB-4F68-B632-6AE4DE8D0118}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ACDB70EF-63BB-4F68-B632-6AE4DE8D0118}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ACDB70EF-63BB-4F68-B632-6AE4DE8D0118}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ACDB70EF-63BB-4F68-B632-6AE4DE8D0118}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

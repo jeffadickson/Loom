@@ -205,3 +205,27 @@ MIG-09/18/20 now cover Integer → Decimal and Decimal → Integer for nonunique
 ## v0.12 implementation update
 
 Money, explicit decimal precision/rounding, text/date/select conversions, required-to-optional migration, Binary with transparent SQLite compression, and external Uri references are implemented. The API transports numeric field values as strings. The new `--memory-demo` mode runs seeded test results without database setup. See [DATA_TYPES.md](DATA_TYPES.md) for authoritative contracts and remaining limits; this supersedes earlier deferrals of these features. Streaming/object storage, time-series querying/adapters, FX, additional durable providers and production authentication remain open.
+
+
+## Identity and account lifecycle — critical framework requirement (2026-10-14)
+
+This section supersedes the prototype-only authentication scope. Applications
+must not implement their own password cryptography or account recovery tokens.
+
+| ID | Priority | Requirement and acceptance |
+|---|---|---|
+| ID-01 | P0 | Reusable ASP.NET Core Identity module with durable accounts, unique normalized emails, stable user IDs and separately owned account schema. |
+| ID-02 | P0 | Configurable self-registration; unconfirmed accounts cannot sign in. Confirmation links expire, reject tampering and permit resend without exposing tokens in HTTP responses/logs. |
+| ID-03 | P0 | Password change requires the current password. Forgotten-password recovery uses emailed expiring tokens; unknown accounts receive the same response; successful reset invalidates previous sessions and token replay. |
+| ID-04 | P0 | Administrators create accounts, assign application roles, disable/re-enable accounts and initiate reset email. Disabled users cannot sign in or continue existing sessions. Protect the last active administrator. |
+| ID-05 | P0 | Role changes invalidate existing sessions. Stable account IDs map to Loom Actor; client role headers never determine authenticated permissions. |
+| ID-06 | P0 | Authenticator TOTP MFA enrollment, verified activation, MFA sign-in, recovery codes and reset flows use Identity implementations. |
+| ID-07 | P0 | CSRF protection, lockout, rate limits, HttpOnly cookies, configured secure transport and persistent protected deployment keys. |
+| ID-08 | P0 | Account lifecycle UI is included; applications supply branding/configuration rather than rebuilding login, registration and recovery. |
+| ID-09 | P0 | Email delivery is a replaceable service. Development capture is explicit, local and prohibited in production. No confirmation/reset tokens in ordinary audit records. |
+| ID-10 | P1 | External OIDC login uses standard middleware with explicit authority/client configuration. No implicit cross-provider account linking or automatic administrator grants. |
+| ID-11 | P0 | Administrative account actions have durable audit records. Account registration never accepts role/tenant privilege input. |
+| ID-12 | P0 | Automated HTTP/browser tests cover registration, confirmation, reset replay, password change, restart durability, disabled sessions, role spoofing, CSRF, MFA and administrator boundaries. |
+
+Team/league/tenant membership remains an application authorization concern;
+authenticating an account does not by itself grant access to another tenant.

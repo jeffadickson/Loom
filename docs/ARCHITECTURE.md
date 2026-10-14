@@ -119,3 +119,42 @@ Explicit null ordering and ID tie-breaking match the in-memory implementation.
 Count and page execute inside the same serializable store transaction. This removes
 the 10,000-document application scan cap for supported query shapes, but JSON
 extraction can still scan the database table; this is not a claim of indexed access.
+
+
+## Core account-management architecture (2026-10-14)
+
+`Loom.Identity` owns the reusable ASP.NET Core Identity integration. Microsoft
+Identity owns password hashing, lockout, confirmation/reset tokens, authenticator
+MFA and account-management Razor Pages. Loom adds configuration, durable EF
+storage, application-role claims, disabled-account enforcement, administrative
+operations and audit records. The previous configured-password Accounts mode is
+a compatibility demonstration; it is not the full account lifecycle.
+
+Identity is a host capability, not a dynamically editable DocType. Its EF account
+schema and deployment keys are separate from scientific/business document data.
+The first implementation uses a dedicated SQLite account database, including when
+the document provider is Memory, PostgreSQL or SQL Server. Provider expansion must
+have its own Identity migration/conformance tests; document-provider configuration
+must never silently relocate accounts.
+
+Self-registration is opt-in and creates an unprivileged account. Email verification
+is required. Roles are assigned by an administrator, and a missing role maps only
+to Viewer. Actor IDs use Identity's stable user ID, not a mutable email address.
+All document permissions remain enforced by DocumentService. Account enablement,
+security stamps and role changes are checked on requests so existing cookies cannot
+retain revoked access. Administration runs in a database transaction with audit.
+The last active Admin cannot be disabled or demoted.
+
+The included account UI is Identity's Razor Class Library, with its antiforgery
+validation, backed by Loom's sender service. Email destinations are taken from
+verified account state where appropriate; confirmation/recovery links use a fixed
+configured public origin rather than an arbitrary request Host. SMTP is configurable;
+explicit Development-only pickup supports local tests without sending email.
+Data Protection keys are persisted to a dedicated directory. Production must use
+HTTPS and protect that directory with deployment ACLs/encryption at rest. Cookie
+and recovery-token isolation uses a configured Data Protection application name.
+
+OIDC is optional external authentication through Microsoft's middleware. External
+identities do not inherit Loom Admin privileges. Account linking remains the
+explicit Identity flow. League/team membership, invitations and tenant isolation
+are separate authorization requirements, not claims of identity-provider parity.

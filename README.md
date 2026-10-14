@@ -308,3 +308,7 @@ Build the standalone introduction from its served source with `python3 tools/bui
 ## Laboratory register
 
 The scientific demo now links instruments, specimens, runs and results, with a printable run report. Open `/laboratory.html` on the running demo. See [Laboratory setup, accounts, migrations and limitations](docs/LABORATORY.md).
+
+## Account lifecycle
+
+Use `Authentication__Mode=Identity` for persistent accounts, registration and email verification, password change/reset, authenticator MFA and administrator-managed roles/disablement. See [Identity setup and security boundaries](docs/IDENTITY.md). The older `Accounts` mode remains a limited compatibility demo.

@@ -4,6 +4,7 @@
     <None Remove="data/**" />
     <ProjectReference Include="../Loom.Sqlite/Loom.Sqlite.csproj" />
     <ProjectReference Include="../Loom.Server/Loom.Server.csproj" />
+    <ProjectReference Include="../Loom.Identity/Loom.Identity.csproj" />
     <Content Update="Reports/*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Update="Metadata/*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>

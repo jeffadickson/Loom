@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using Loom.Identity;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using System.Net;
@@ -20,7 +22,24 @@ if (args.Contains("--hash-password"))
     if (password.Length < 12) throw new InvalidOperationException("Use at least 12 characters.");
     Console.WriteLine(new PasswordHasher<LoomAccount>().HashPassword(new("", "Viewer", ""), password)); return;
 }
-var accountsEnabled = AccountAuthentication.Configure(builder);
+var identityEnabled = builder.Configuration["Authentication:Mode"] == "Identity";
+if(identityEnabled) builder.AddLoomIdentity();
+var accountsEnabled = identityEnabled || AccountAuthentication.Configure(builder);
+if(args.Contains("--identity-schema"))
+{
+    if(!identityEnabled)throw new InvalidOperationException("Set Authentication:Mode=Identity first.");
+    var schemaHost=builder.Build();using var scope=schemaHost.Services.CreateScope();
+    Console.WriteLine(scope.ServiceProvider.GetRequiredService<IdentityDatabase>().Database.GenerateCreateScript());return;
+}
+var administratorArgument=args.FirstOrDefault(a=>a.StartsWith("--identity-admin=",StringComparison.Ordinal));
+if(administratorArgument!=null)
+{
+    if(!identityEnabled)throw new InvalidOperationException("Set Authentication:Mode=Identity first.");
+    var identityHost=builder.Build();await identityHost.InitializeLoomIdentityAsync();
+    var password=Console.ReadLine()??throw new InvalidOperationException("Supply password on standard input.");
+    await identityHost.CreateAdministratorAsync(administratorArgument["--identity-admin=".Length..],password);
+    Console.WriteLine("Administrator created.");return;
+}
 var memoryDemo=args.Contains("--memory-demo");
 var scienceDemo=memoryDemo||args.Contains("--science-demo");
 if(memoryDemo)builder.Configuration["Database:Provider"]="Memory";
@@ -105,9 +124,11 @@ if (scienceDemo && catalog.Types.ContainsKey("LabRun") && service.List("LabRun",
     service.Repository<LabRunModel>(admin).Create(new() { Name="RUN-001 · Thermal qualification", Instrument=instrument.Id, Specimen=specimen.Id, Result=result.Id, Operator="analyst", Status="Complete", PerformedOn=new DateOnly(2026,10,14), Notes="Reference probe equilibrated before acquisition." });
 }
 // This is an explicitly local demonstration, not an authentication implementation.
-builder.WebHost.UseUrls("http://127.0.0.1:" + (Environment.GetEnvironmentVariable("LOOM_PORT") ?? "5080"));
+builder.WebHost.UseUrls(identityEnabled ? builder.Configuration["Identity:PublicOrigin"]! : "http://127.0.0.1:" + (Environment.GetEnvironmentVariable("LOOM_PORT") ?? "5080"));
 var app = builder.Build();
+if(identityEnabled)await app.InitializeLoomIdentityAsync();
 if (accountsEnabled) { app.UseAuthentication(); app.UseRateLimiter(); }
+if(identityEnabled)app.UseLoomIdentity();
 var schemaGate = new SemaphoreSlim(1, 1);
 app.Lifetime.ApplicationStopped.Register(store.Dispose);
 app.Use(async (context, next) =>
@@ -144,18 +165,24 @@ Actor Current(HttpContext ctx)
     if (accountsEnabled)
     {
         if (ctx.User.Identity?.IsAuthenticated != true) throw new LoomException(401, "Sign in to continue.");
-        return new Actor(ctx.User.FindFirstValue(ClaimTypes.NameIdentifier)!, ctx.User.FindFirstValue(ClaimTypes.Role)!);
+        return new Actor(ctx.User.FindFirstValue(ClaimTypes.NameIdentifier)!, (ctx.User.IsInRole("Admin")?"Admin":ctx.User.IsInRole("Editor")?"Editor":"Viewer"));
     }
     var role = ctx.Request.Headers["X-Demo-Role"].ToString();
     if (role is not ("Admin" or "Editor" or "Viewer")) throw new LoomException(403, "Select a valid demonstration role.");
     return new Actor("demo-" + role.ToLowerInvariant(), role);
 }
-AccountAuthentication.Map(app, accountsEnabled);
+if(!identityEnabled)AccountAuthentication.Map(app, accountsEnabled);
+else
+{
+    app.MapGet("/auth/session",(HttpContext c)=>new{enabled=true,identity=true,authenticated=c.User.Identity?.IsAuthenticated==true,name=c.User.FindFirstValue(ClaimTypes.NameIdentifier)});
+    app.MapGet("/login.html",()=>Results.Redirect("/Identity/Account/Login"));
+}
+if(identityEnabled) app.Use(async(c,next)=> { if(c.Request.Path=="/login.html"){c.Response.Redirect("/Identity/Account/Login");return;}await next(); });
 app.UseDefaultFiles(); app.UseStaticFiles();
 app.MapGet("/api/meta", (HttpContext c) =>
 {
     var actor = Current(c);
-    return Results.Ok(new { name = "Loom", version = "0.12", schemaHash = SchemaIdentity.Hash(catalog), reportDesigner = actor.Role == "Admin" && store is IReportDesignStore, modelSource, designer = !codeModels && actor.Role == "Admin" && store is IMigrationStore, mode = accountsEnabled ? "Signed-in local workspace" : "Local demonstration", provider = store.Info, actor,
+    return Results.Ok(new { name = "Loom", version = "0.12", schemaHash = SchemaIdentity.Hash(catalog), reportDesigner = actor.Role == "Admin" && store is IReportDesignStore, modelSource, designer = !codeModels && actor.Role == "Admin" && store is IMigrationStore, identity = identityEnabled, mode = accountsEnabled ? "Signed-in local workspace" : "Local demonstration", provider = store.Info, actor,
         types = catalog.Types.Values.Where(t => service.Can(t.Name, actor, "read")).Select(t => new { t.Id, t.Name, t.Label, t.Version, t.TitleField, t.Submittable, fields = t.Fields.Where(f => service.CanReadField(f,actor)), actions = t.Permissions.GetValueOrDefault(actor.Role, []) }) });
 });
 app.MapGet("/api/documents/{type}", (string type, HttpContext c, string? search, string? sort, bool? descending, int? skip, int? take, string? field, string? equals) =>
