@@ -8,7 +8,7 @@ MANIFEST=json.loads((ROOT/'build/toolchains.json').read_text())
 
 def rid():
     system={'Windows':'win','Linux':'linux','Darwin':'osx'}.get(platform.system())
-    arch={'x86_64':'x64','AMD64':'x64','arm64':'arm64','aarch64':'arm64'}.get(platform.machine())
+    arch={'x86_64':'x64','amd64':'x64','arm64':'arm64','aarch64':'arm64'}.get(platform.machine().lower())
     value=f'{system}-{arch}'
     if value not in MANIFEST['dotnet']:raise RuntimeError(f'Unsupported bootstrap platform: {value}. Install the pinned SDK manually.')
     return value
