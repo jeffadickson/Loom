@@ -23,7 +23,7 @@ async function linkLabels(){
   labels.clear();
   for(const f of schema().fields.filter(f=>f.type==='Link')){
     const target=meta.types.find(t=>t.name===f.target);if(!target)continue;
-    const page=await api('documents/'+f.target+'?take=200');for(const d of page.items)labels.set(d.id,d.values[target.titleField]);
+    const ids=[...new Set(rows.map(d=>d.values[f.name]).filter(Boolean))];for(const id of ids){const doc=await api('documents/'+f.target+'/'+encodeURIComponent(id));labels.set(id,doc.values[target.titleField])}
   }
 }
 async function load(){
@@ -46,9 +46,10 @@ async function edit(doc=null){
    const editable=!current||allowed('write')&&current.state==='Draft';
    for(const f of schema().fields){const label=element('label',f.label+(f.required?' *':''));let control;
      if(f.type==='Select'||f.type==='Link'||f.type==='Boolean'){control=element('select');let options=f.type==='Select'?f.options.map(x=>[x,x]):f.type==='Boolean'?[["true","Yes"],["false","No"]]:[];
-       if(f.type==='Link'){const target=meta.types.find(t=>t.name===f.target);const page=await api('documents/'+f.target+'?take=200');options=page.items.map(d=>[d.id,d.values[target.titleField]])}control.append(element('option','Select…'));control.firstChild.value='';for(const [value,text]of options){const o=element('option',text);o.value=value;control.append(o)}
+       control.append(element('option','Select…'));control.firstChild.value='';for(const [value,text]of options){const o=element('option',text);o.value=value;control.append(o)}
      }else{control=element('input');control.type=f.type==='Binary'?'file':f.type==='Date'?'date':'text';if(['Integer','Decimal','Money'].includes(f.type))control.inputMode=f.type==='Integer'?'numeric':'decimal'}
      control.name=f.name;control.required=f.required&&!f.readOnly&&!(f.type==='Binary'&&current?.values[f.name]!=null);control.disabled=f.readOnly||!editable;if(f.type!=='Binary')control.value=f.type==='Measurement'?(current?.values[f.name]?.value??''):(current?.values[f.name]??'');label.append(control);
+     if(f.type==='Link')await configureLinkPicker(label,control,f,!editable||f.readOnly,current?.values[f.name]);
      if(f.type==='Measurement'){const unit=element('select');unit.name=f.name+'__unit';for(const u of f.allowedUnits)unit.add(new Option(u,u));unit.value=current?.values[f.name]?.unit??f.allowedUnits[0];unit.disabled=!editable||f.readOnly;unit.setAttribute('aria-label',f.label+' unit');const uncertainty=element('input');uncertainty.name=f.name+'__uncertainty';uncertainty.placeholder='Standard uncertainty (optional)';uncertainty.setAttribute('aria-label',f.label+' standard uncertainty');uncertainty.value=current?.values[f.name]?.standardUncertainty??'';uncertainty.disabled=unit.disabled;label.append(unit,uncertainty)}
      if(f.type==='Money')label.append(element('span',f.currency+' · '+(f.scale??2)+' decimal places · rounding: '+f.rounding,'hint'));
      if(f.description)label.append(element('span',f.description,'hint'));if(f.maxLength)control.maxLength=f.maxLength;
@@ -119,3 +120,27 @@ $('printReport').onclick=async()=>{try{
  if(!r.ok)throw Error((await r.json()).error);
  const url=URL.createObjectURL(await r.blob()),a=element('a');a.href=url;a.download=type+'_Report.html';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }catch(e){showError(e)}};
+
+// Bounded pages preserve an existing selection even when it is outside the result page.
+async function configureLinkPicker(label,control,field,disabled,selected){
+ const target=meta.types.find(t=>t.name===field.target);let offset=0,generation=0;
+ const search=element('input');search.type='search';search.placeholder='Search '+target.label;search.setAttribute('aria-label','Search '+field.label+' links');search.disabled=disabled;
+ const previous=element('button','Previous choices'),next=element('button','Next choices'),status=element('span','','hint');
+ previous.type=next.type='button';previous.setAttribute('aria-label','Previous '+field.label+' choices');next.setAttribute('aria-label','Next '+field.label+' choices');status.setAttribute('aria-live','polite');
+ label.append(search,previous,next,status);
+ let selectedLabel='';if(selected){const doc=await api('documents/'+field.target+'/'+encodeURIComponent(selected));selectedLabel=doc.values[target.titleField];control.add(new Option(selectedLabel,selected));control.value=selected}
+ async function refresh(){
+  const request=++generation;
+  previous.disabled=next.disabled=true;
+  try{
+   const page=await api('documents/'+field.target+'?'+new URLSearchParams({search:search.value,skip:offset,take:50}));if(request!==generation)return;
+   const value=control.value,caption=control.selectedOptions[0]?.textContent;
+   control.replaceChildren(new Option('Select…',''));for(const doc of page.items)control.add(new Option(doc.values[target.titleField],doc.id));
+   if(value&&!page.items.some(d=>d.id===value))control.add(new Option(caption||selectedLabel||value,value));control.value=value;
+   status.textContent=page.total?`${offset+1}–${Math.min(offset+50,page.total)} of ${page.total}`:'No matching records';
+   previous.disabled=disabled||offset===0;next.disabled=disabled||offset+50>=page.total;
+  }catch(error){if(request===generation){status.textContent=error.message;showError(error,true)}}
+ }
+ search.oninput=()=>{offset=0;void refresh()};previous.onclick=()=>{offset=Math.max(0,offset-50);void refresh()};next.onclick=()=>{offset+=50;void refresh()};
+ await refresh();
+}

@@ -79,5 +79,16 @@ public abstract class RepositoryContract
         Assert.Equal(409,Assert.Throws<LoomException>(()=>service.Create("Reading",new(){["Name"]="same"},Admin)).Status);
         Assert.Single(service.List("Reading",Admin).Items);
     }
+    [Fact] public void List_search_is_literal_case_insensitive_and_combines_with_filters()
+    {
+        using var store=Open();var service=Service(store);
+        service.Create("Reading",new(){["Name"]="Café %_ sensor",["Cost"]="2.00"},Admin);
+        service.Create("Reading",new(){["Name"]="other sensor",["Cost"]="10.00"},Admin);
+        Assert.Single(service.List("Reading",Admin,search:"CAFÉ %_").Items);
+        Assert.Empty(service.List("Reading",Admin,search:"sensor",field:"Cost",equals:"3").Items);
+        Assert.Single(service.List("Reading",Admin,search:"sensor",field:"Cost",equals:"2.0").Items);
+        var page=service.List("Reading",Admin,sort:"Cost",skip:1,take:1);
+        Assert.Equal(2,page.Total);Assert.Equal("other sensor",Assert.Single(page.Items).Values["Name"]!.ToString());
+    }
     private sealed class InjectedFailure:Exception;
 }

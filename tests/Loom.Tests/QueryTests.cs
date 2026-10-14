@@ -20,6 +20,20 @@ static class QueryTests
             try{service.Query(schema.Name,actor,new("Name"));throw new Exception("Unstable name accepted");}catch(LoomException e){Check(e.Status==400,provider+" query requires stable field identity");}
             try{service.Query(schema.Name,new("outsider","Viewer"),new(amount.Id!));throw new Exception("Authorization bypass");}catch(LoomException e){Check(e.Status==403,provider+" query authorization");}
         }
+        using(var store=new SqliteStore("Data Source=:memory:"))
+        {
+            store.Migrate(catalog);
+            store.Transaction(session=>
+            {
+                for(int i=0;i<10005;i++)session.Insert(new(i.ToString("D32"),schema.Name,1,"Draft","2026-01-01","2026-01-01",new(){["Name"]="Reading "+i.ToString("D5"),["Amount"]=(decimal)i,["Flag"]=true}));
+                return 0;
+            });
+            var service=new DocumentService(catalog,store,[]);
+            var page=service.List(schema.Name,actor,skip:10000,take:5);
+            Check(page.Total==10005 && page.Items.Count==5,"SQLite List pages past former 10000-record scan ceiling");
+            Check(service.List(schema.Name,actor,search:"READING 10004").Total==1,"SQLite List search runs in provider");
+            Check(service.List(schema.Name,actor,search:"true").Total==10005,"SQLite Boolean search matches Memory representation");
+        }
         Check(Loom.Demo.Designer.Export(catalog).SequenceEqual(Loom.Demo.Designer.Export(catalog)),"deterministic model export");
         var generated=Path.Combine(temp,"incremental");TypeGenerator.Generate(catalog,generated);var path=Path.Combine(generated,"QueryItem.g.cs");var stamp=File.GetLastWriteTimeUtc(path);TypeGenerator.Generate(catalog,generated);Check(File.GetLastWriteTimeUtc(path)==stamp,"unchanged generated binding keeps timestamp");
         File.WriteAllText(path,"// handwritten");try{TypeGenerator.Generate(catalog,generated);throw new Exception("Handwritten overwrite");}catch(InvalidOperationException){Check(File.ReadAllText(path)=="// handwritten","handwritten files protected");}

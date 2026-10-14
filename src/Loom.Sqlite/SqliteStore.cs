@@ -16,6 +16,8 @@ public sealed partial class SqliteStore : IDocumentStore, IMigrationStore
         connection = new(connectionString); connection.Open(); RegisterConversions();
         connection.CreateCollation("loom_decimal",(a,b)=>decimal.Parse(a,System.Globalization.CultureInfo.InvariantCulture).CompareTo(decimal.Parse(b,System.Globalization.CultureInfo.InvariantCulture)));
         connection.CreateCollation("loom_ordinal",StringComparer.Ordinal.Compare);
+        connection.CreateFunction<object?,string,string,bool>("loom_contains",(value,type,search)=>
+            (value==null?"":type=="Boolean"?(Convert.ToInt64(value)==0?"false":"true"):Convert.ToString(value,System.Globalization.CultureInfo.InvariantCulture)??"").Contains(search,StringComparison.OrdinalIgnoreCase),isDeterministic:true);
         using var cmd = connection.CreateCommand();
         cmd.CommandText = "PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;"; cmd.ExecuteNonQuery();
     }
@@ -65,6 +67,12 @@ public sealed partial class SqliteStore : IDocumentStore, IMigrationStore
                 if(filter.Operator==FilterOperator.IsNull){clauses.Add(column+" IS NULL");continue;}
                 var parameter="$p"+parameters.Count;parameters.Add((parameter,Value(field,filter.Value)));
                 clauses.Add(column+(filter.Operator switch{FilterOperator.Equal=>" = ",FilterOperator.GreaterThan=>" > ",_=>" < "})+parameter);
+            }
+            if(!string.IsNullOrWhiteSpace(query.Search))
+            {
+                parameters.Add(("$search",query.Search));
+                var searchable=schema.Fields.Where(f=>f.Type is not ("Binary" or "Measurement"));
+                clauses.Add("("+string.Join(" OR ",searchable.Select(f=>"loom_contains("+Q(f.Name)+", '"+f.Type+"', $search)"))+")");
             }
             var where=clauses.Count==0?"":" WHERE "+string.Join(" AND ",clauses);
             using var count=Command("SELECT COUNT(*) FROM "+Q(schema.Name)+where,parameters.ToArray());

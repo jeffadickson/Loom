@@ -45,6 +45,8 @@ with tempfile.TemporaryDirectory(prefix='loom-http-') as tmp:
                 except urllib.error.HTTPError as e:
                     assert e.code == 422
                 print('PASS CSharp authority: browser designer disabled and endpoint guarded')
+            if '--links' in sys.argv:
+                subprocess.run(['node', str(root / 'tools/test_link_picker.cjs')], check=True)
             if '--browser' in sys.argv:
                 subprocess.run(['node', str(root / 'tools/test_ui.cjs')], check=True)
             if '--datatypes' in sys.argv:

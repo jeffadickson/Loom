@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json.Nodes;
 
 namespace Loom.Core;
@@ -40,20 +39,12 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
         if (!schema.Fields.Any(f => f.Name == sort && f.Type is not ("Binary" or "Measurement"))) throw new LoomException(400, "Invalid sort field.");
         if (field != null && !schema.Fields.Any(f => f.Name == field)) throw new LoomException(400, "Invalid filter field.");
         if (skip < 0 || take < 1 || take > 200) throw new LoomException(400, "Page size must be 1–200 and skip nonnegative.");
-        return store.Transaction(s =>
-        {
-            IEnumerable<Document> rows = s.List(type);
-            if (!string.IsNullOrWhiteSpace(search)) rows = rows.Where(d => d.Values.Any(v => schema.Fields.Single(f=>f.Name==v.Key).Type!="Binary" && (v.Value?.ToString() ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)));
-            if (field != null) rows = rows.Where(d => (d.Values[field]?.ToString() ?? "") == equals);
-            var list = rows.ToList();
-            var definition = schema.Fields.Single(f => f.Name == sort);
-            Func<Document, IComparable> key = definition.Type is "Integer" or "Decimal" or "Money"
-                ? d => decimal.TryParse(d.Values[sort]?.ToString(), CultureInfo.InvariantCulture, out var n) ? n : decimal.MinValue
-                : d => d.Values[sort]?.ToString() ?? "";
-            var ordered = descending ? list.OrderByDescending(key) : list.OrderBy(key);
-            return new Page(list.Count, ordered.ThenBy(d => d.Id).Skip(skip).Take(take).ToList());
-        });
+        var sortField=schema.Fields.Single(f=>f.Name==sort);
+        var filterField=field==null?null:schema.Fields.Single(f=>f.Name==field);
+        FieldFilter[] filters=filterField==null?[]:[new(filterField.Id!,string.IsNullOrEmpty(equals)?FilterOperator.IsNull:FilterOperator.Equal,string.IsNullOrEmpty(equals)?null:JsonValue.Create(equals))];
+        return Query(type,actor,new(sortField.Id!,descending,skip,take,filters,search));
     }
+
     public Document Create(string type, JsonObject values, Actor actor)
     {
         var schema = Authorize(type, actor, "create");

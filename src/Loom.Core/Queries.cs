@@ -4,12 +4,12 @@ using System.Text.Json.Nodes;
 namespace Loom.Core;
 public enum FilterOperator { Equal, GreaterThan, LessThan, IsNull }
 public sealed record FieldFilter(string FieldId,FilterOperator Operator,JsonNode? Value=null);
-public sealed record DocumentQuery(string SortFieldId,bool Descending=false,int Skip=0,int Take=50,FieldFilter[]? Filters=null);
+public sealed record DocumentQuery(string SortFieldId,bool Descending=false,int Skip=0,int Take=50,FieldFilter[]? Filters=null,string? Search=null);
 public static class Queries
 {
     public static DocumentQuery Validate(DocType schema,DocumentQuery query)
     {
-        if(query.Skip<0 || query.Take is <1 or >200 || query.Filters?.Length>32)throw new LoomException(400,"Invalid query bounds.");
+        if(query.Skip<0 || query.Take is <1 or >200 || query.Filters?.Length>32 || query.Search?.Length>2000)throw new LoomException(400,"Invalid query bounds.");
         Field Resolve(string id)=>schema.Fields.SingleOrDefault(f=>f.Id==id)??throw new LoomException(400,"Unknown query field identity.");
         void Scalar(Field f){if(f.Type is "Binary" or "Measurement")throw new LoomException(400,"Compound and binary queries require explicit scientific operators.");}
         Scalar(Resolve(query.SortFieldId));
@@ -19,7 +19,7 @@ public static class Queries
             var field=Resolve(f.FieldId);Scalar(field);
             if(!Enum.IsDefined(f.Operator) || f.Operator==FilterOperator.IsNull && f.Value!=null || f.Operator!=FilterOperator.IsNull && f.Value==null)
                 throw new LoomException(400,"Invalid query operator/value.");
-            return f with{Value=f.Value==null?null:FieldValues.Normalize(field,f.Value)};
+            return f with{Value=f.Value==null?null:FieldValues.Normalize(field with{Type=field.Type=="Select"?"Text":field.Type,Options=field.Type=="Select"?null:field.Options,Minimum=null,Maximum=null,MaxLength=null},f.Value)};
         }).ToArray()};
     }
     public static int Compare(Field field,JsonNode? left,JsonNode? right)
@@ -32,6 +32,7 @@ public static class Queries
     public static Page Execute(IEnumerable<Document> source,DocType schema,DocumentQuery query)
     {
         query=Validate(schema,query);var fields=schema.Fields.ToDictionary(f=>f.Id!);
+        if(!string.IsNullOrWhiteSpace(query.Search))source=source.Where(d=>schema.Fields.Where(f=>f.Type is not ("Binary" or "Measurement")).Any(f=>(d.Values[f.Name]?.ToString()??"").Contains(query.Search,StringComparison.OrdinalIgnoreCase)));
         foreach(var filter in query.Filters!)
         {
             var field=fields[filter.FieldId];
