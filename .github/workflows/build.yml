@@ -30,8 +30,12 @@ jobs:
           cache: npm
       - name: Install locked browser tooling
         run: npm ci
-      - name: Install Chromium and system dependencies
+      - name: Install Chromium and Linux system dependencies
+        if: runner.os == 'Linux'
         run: npx --no-install playwright install --with-deps chromium
+      - name: Install Chromium on Windows and macOS
+        if: runner.os != 'Linux'
+        run: npx --no-install playwright install chromium
       - name: Verify generated introduction and browser behavior
         run: dotnet msbuild build/Loom.proj -t:BrowserTest -p:Python=python
       - name: Package framework-dependent demo
