@@ -1,18 +1,18 @@
 'use strict';
 const $ = id => document.getElementById(id);
-let meta, type='Asset', tab='records', rows=[], skip=0, total=0, descending=false, current=null;
+let meta, type=new URLSearchParams(location.search).get('type')||'Asset', tab='records', rows=[], skip=0, total=0, descending=false, current=null;
 const labels=new Map();
 const schema=()=>meta.types.find(t=>t.name===type);
 const allowed=action=>schema().actions.includes(action);
 async function api(path, method='GET', body){
   const response=await fetch('/api/'+path,{method,headers:{'Content-Type':'application/json','X-Loom-Demo':'local','X-Demo-Role':$('role').value,'X-Loom-Schema':meta?.schemaHash||''},body:body===undefined?undefined:JSON.stringify(body)});
-  if(!response.ok){let error;try{error=(await response.json()).error}catch{error='Request failed ('+response.status+')'}throw Error(error)}
+  if(response.status===401){location.href='/login.html';throw Error('Sign in required')}if(!response.ok){let error;try{error=(await response.json()).error}catch{error='Request failed ('+response.status+')'}throw Error(error)}
   return response.status===204?null:response.json();
 }
 function showError(e, form=false){const el=$(form?'formError':'error');el.textContent=e.message;el.hidden=false}
 function element(tag,text,cls){const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(cls)el.className=cls;return el}
 async function boot(){
-  try{meta=await api('meta');$('provider').textContent=meta.provider.name+' connected';$('design').hidden=!meta.designer;$('layoutReport').hidden=!meta.reportDesigner;$('storage').textContent=meta.provider.name;$('durable').textContent=meta.provider.durable?'Saved across restarts':'Temporary • resets on restart';
+  try{meta=await api('meta');if(!meta.types.some(t=>t.name===type))type=meta.types[0].name;if(meta.mode!=='Local demonstration'){$('role').closest('label').hidden=true;document.querySelector('.banner').textContent=meta.mode;}$('provider').textContent=meta.provider.name+' connected';$('design').hidden=!meta.designer;$('layoutReport').hidden=!meta.reportDesigner;$('storage').textContent=meta.provider.name;$('durable').textContent=meta.provider.durable?'Saved across restarts':'Temporary • resets on restart';
     $('types').replaceChildren(...meta.types.map(t=>{const b=element('button',t.label);b.classList.toggle('active',t.name===type);b.onclick=()=>choose(t.name);return b}));
     $('sort').replaceChildren(...schema().fields.filter(f=>!['Binary','Measurement'].includes(f.type)).map(f=>{const o=element('option',f.label);o.value=f.name;return o}));$('sort').value=schema().titleField;
     await load();

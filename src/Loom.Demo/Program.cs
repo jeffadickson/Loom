@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Identity;
 using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -12,6 +14,13 @@ using Loom.Demo;
 
 var builder = WebApplication.CreateBuilder(args);
 var root = builder.Environment.ContentRootPath;
+if (args.Contains("--hash-password"))
+{
+    var password = Console.ReadLine() ?? throw new InvalidOperationException("Supply a password on standard input.");
+    if (password.Length < 12) throw new InvalidOperationException("Use at least 12 characters.");
+    Console.WriteLine(new PasswordHasher<LoomAccount>().HashPassword(new("", "Viewer", ""), password)); return;
+}
+var accountsEnabled = AccountAuthentication.Configure(builder);
 var memoryDemo=args.Contains("--memory-demo");
 var scienceDemo=memoryDemo||args.Contains("--science-demo");
 if(memoryDemo)builder.Configuration["Database:Provider"]="Memory";
@@ -19,7 +28,7 @@ var modelSource = builder.Configuration["Models:Source"] ?? "Json";
 var codeModels = modelSource.Equals("CSharp", StringComparison.OrdinalIgnoreCase);
 if (!codeModels && !modelSource.Equals("Json", StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Models:Source must be Json or CSharp.");
 var catalog = codeModels ? AttributeCatalog.From(typeof(AssetModel), typeof(WorkOrderModel)) : Catalog.Load(Path.Combine(root, "Metadata"));
-if(scienceDemo)catalog=new Catalog(catalog.Types.Values.Concat(AttributeCatalog.From(typeof(TestResultModel)).Types.Values));
+if(scienceDemo)catalog=new Catalog(catalog.Types.Values.Concat(AttributeCatalog.From(typeof(TestResultModel),typeof(InstrumentModel),typeof(SpecimenModel),typeof(LabRunModel)).Types.Values));
 if (args.Contains("--export-model")) { Console.WriteLine(JsonSerializer.Serialize(catalog.Types.Values, Catalog.Json)); return; }
 if (args.Contains("--generate"))
 {
@@ -44,7 +53,7 @@ if (args.Contains("--plan-model") || applyModel != null)
 {
     using (store)
     {
-        if (storedCatalog == null || store is not IMigrationStore migrations) throw new InvalidOperationException("Model planning needs an initialized SQLite database.");
+        if (storedCatalog == null || store is not IMigrationStore migrations) throw new InvalidOperationException("Model planning needs an initialized migration-capable database.");
         var required = new WorkOrderHook();
         if (required.RequiredFields.Any(n => !catalog.Get(required.Type).Fields.Any(f => f.Name == n))) throw new InvalidOperationException("Target model breaks C# hook dependencies.");
         var backfillFile=args.FirstOrDefault(a=>a.StartsWith("--backfills=",StringComparison.Ordinal));
@@ -66,12 +75,14 @@ else
     if (codeModels && SchemaIdentity.Hash(catalog) != SchemaIdentity.Hash(storedCatalog))
         throw new InvalidOperationException("C# model differs from accepted database schema. Use --plan-model and --apply-model=<id>, then restart.");
     catalog = storedCatalog;
+    store.Migrate(catalog);
 }
 IDocumentHook[] hooks = [new WorkOrderHook()];
 foreach (var hook in hooks)
     if (hook.RequiredFields.Any(name => !catalog.Get(hook.Type).Fields.Any(f => f.Name == name)))
         throw new InvalidOperationException("Stored model is incompatible with C# hook dependencies.");
-var service = new DocumentService(catalog, store, hooks);
+IDocumentAccessPolicy? access = accountsEnabled ? new LaboratoryAccessPolicy() : null;
+var service = new DocumentService(catalog, store, hooks, access);
 var admin = new Actor("demo-admin", "Admin");
 if (storedCatalog == null && service.List("Asset", admin).Total == 0)
 {
@@ -86,9 +97,17 @@ if(scienceDemo && service.List("TestResult",admin).Total==0)
     results.Create(new(){Name="Thermal cycle • channel 1",Outcome="Pass",Temperature=new(new(25,Loom.Core.Science.Units.Celsius),.1),SampleCount=9007199254740993,Cost=1234.56m,Waveform=Enumerable.Range(0,4096).Select(i=>(byte)(i%16)).ToArray(),Series=new Uri("tsdb://example.test/thermal/run-001?channel=1")});
     results.Create(new(){Name="Vibration sweep • channel 2",Outcome="Review",SampleCount=64000,Cost=87.40m,Waveform=Encoding.UTF8.GetBytes("Example test result payload"),Series=new Uri("https://example.test/results/run-002")});
 }
+if (scienceDemo && catalog.Types.ContainsKey("LabRun") && service.List("LabRun",admin).Total == 0)
+{
+    var instrument = service.Repository<InstrumentModel>(admin).Create(new() { Name="Temperature reference probe", Serial="PRT-1042", CalibrationDue=new DateOnly(2027,3,1) });
+    var specimen = service.Repository<SpecimenModel>(admin).Create(new() { Name="Aluminium coupon A-17", Material="Aluminium 6061", Batch="B-2026-10" });
+    var result = service.List("TestResult",admin).Items[0];
+    service.Repository<LabRunModel>(admin).Create(new() { Name="RUN-001 · Thermal qualification", Instrument=instrument.Id, Specimen=specimen.Id, Result=result.Id, Operator="analyst", Status="Complete", PerformedOn=new DateOnly(2026,10,14), Notes="Reference probe equilibrated before acquisition." });
+}
 // This is an explicitly local demonstration, not an authentication implementation.
 builder.WebHost.UseUrls("http://127.0.0.1:" + (Environment.GetEnvironmentVariable("LOOM_PORT") ?? "5080"));
 var app = builder.Build();
+if (accountsEnabled) { app.UseAuthentication(); app.UseRateLimiter(); }
 var schemaGate = new SemaphoreSlim(1, 1);
 app.Lifetime.ApplicationStopped.Register(store.Dispose);
 app.Use(async (context, next) =>
@@ -101,6 +120,7 @@ app.Use(async (context, next) =>
     if (context.Request.Path.StartsWithSegments("/api"))
     {
         context.Response.Headers.CacheControl = "no-store";
+        if (accountsEnabled && context.User.Identity?.IsAuthenticated != true) { context.Response.StatusCode = 401; return; }
         if (context.Request.Headers["X-Loom-Demo"] != "local") { context.Response.StatusCode = 403; return; }
     }
     // Single-host coordination: no request sees half-swapped model/service objects.
@@ -121,16 +141,22 @@ app.Use(async (context, next) =>
 });
 Actor Current(HttpContext ctx)
 {
+    if (accountsEnabled)
+    {
+        if (ctx.User.Identity?.IsAuthenticated != true) throw new LoomException(401, "Sign in to continue.");
+        return new Actor(ctx.User.FindFirstValue(ClaimTypes.NameIdentifier)!, ctx.User.FindFirstValue(ClaimTypes.Role)!);
+    }
     var role = ctx.Request.Headers["X-Demo-Role"].ToString();
     if (role is not ("Admin" or "Editor" or "Viewer")) throw new LoomException(403, "Select a valid demonstration role.");
     return new Actor("demo-" + role.ToLowerInvariant(), role);
 }
+AccountAuthentication.Map(app, accountsEnabled);
 app.UseDefaultFiles(); app.UseStaticFiles();
 app.MapGet("/api/meta", (HttpContext c) =>
 {
     var actor = Current(c);
-    return Results.Ok(new { name = "Loom", version = "0.12", schemaHash = SchemaIdentity.Hash(catalog), reportDesigner = actor.Role == "Admin" && store is IReportDesignStore, modelSource, designer = !codeModels && actor.Role == "Admin" && store is IMigrationStore, mode = "Local demonstration", provider = store.Info, actor,
-        types = catalog.Types.Values.Where(t => service.Can(t.Name, actor, "read")).Select(t => new { t.Id, t.Name, t.Label, t.Version, t.TitleField, t.Submittable, t.Fields, actions = t.Permissions.GetValueOrDefault(actor.Role, []) }) });
+    return Results.Ok(new { name = "Loom", version = "0.12", schemaHash = SchemaIdentity.Hash(catalog), reportDesigner = actor.Role == "Admin" && store is IReportDesignStore, modelSource, designer = !codeModels && actor.Role == "Admin" && store is IMigrationStore, mode = accountsEnabled ? "Signed-in local workspace" : "Local demonstration", provider = store.Info, actor,
+        types = catalog.Types.Values.Where(t => service.Can(t.Name, actor, "read")).Select(t => new { t.Id, t.Name, t.Label, t.Version, t.TitleField, t.Submittable, fields = t.Fields.Where(f => service.CanReadField(f,actor)), actions = t.Permissions.GetValueOrDefault(actor.Role, []) }) });
 });
 app.MapGet("/api/documents/{type}", (string type, HttpContext c, string? search, string? sort, bool? descending, int? skip, int? take, string? field, string? equals) =>
     WireJson.Encode(service.List(type, Current(c), search, sort, descending ?? false, skip ?? 0, take ?? 50, field, equals)));
@@ -178,7 +204,7 @@ app.MapPost("/api/designer/apply", (ApplyRequest request, HttpContext c) =>
 {
     var migrations = MigrationAdmin(c);
     catalog = migrations.Apply(request.PlanId, Current(c));
-    service = new DocumentService(catalog, store, hooks);
+    service = new DocumentService(catalog, store, hooks, access);
     return Results.Ok(new { schemaHash = SchemaIdentity.Hash(catalog), message = "Model and database updated. Existing records preserved." });
 });
 app.MapGet("/api/designer/history", (HttpContext c) => MigrationAdmin(c).Migrations());
@@ -223,6 +249,7 @@ app.MapGet("/api/reports/{type}/print", (string type, HttpContext c) =>
     var html = ReportWriter.Write(design.Definition, design.Layout, catalog, service, Current(c));
     return Results.File(Encoding.UTF8.GetBytes(html), "text/html; charset=utf-8", type + "_Report.html");
 });
+app.MapGet("/api/laboratory/runs/{id}/print", (string id,HttpContext c) => Results.File(Encoding.UTF8.GetBytes(LaboratoryReport.Write(id,catalog,service,Current(c))),"text/html; charset=utf-8","Laboratory_Run.html"));
 app.MapGet("/health", () => new { status = "ok", provider = store.Info.Name });
 app.Run();
 

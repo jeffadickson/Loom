@@ -15,4 +15,5 @@ with tempfile.TemporaryDirectory() as tmp:
                     time.sleep(.1)
             else:raise RuntimeError('Host did not become ready')
             subprocess.run(['node',str(root/'tools/test_introduction.cjs')],check=True)
+            subprocess.run(['node',str(root/'tools/test_laboratory.cjs')],check=True)
         finally:host.terminate();host.wait(timeout=10)

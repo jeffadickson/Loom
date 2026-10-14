@@ -22,6 +22,7 @@
     <Exec WorkingDirectory="$(Root)" Command="&quot;$(Python)&quot; tools/build_introduction.py" />
     <Exec WorkingDirectory="$(Root)" Command="git diff --exit-code -- Loom_Introduction.html" />
     <Exec WorkingDirectory="$(Root)" EnvironmentVariables="LOOM_CONFIGURATION=$(Configuration)" Command="&quot;$(Python)&quot; tools/test_introduction.py &quot;$(DotNet)&quot;" />
+    <Exec WorkingDirectory="$(Root)" EnvironmentVariables="LOOM_CONFIGURATION=$(Configuration)" Command="&quot;$(Python)&quot; tools/test_accounts.py &quot;$(DotNet)&quot;" />
   </Target>
   <Target Name="DatabaseTest" DependsOnTargets="Build">
     <Exec WorkingDirectory="$(Root)" Command="&quot;$(DotNet)&quot; test tests/Loom.ContainerTests --configuration $(Configuration) --no-build --no-restore --logger trx --results-directory artifacts/database-results" />

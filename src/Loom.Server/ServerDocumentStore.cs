@@ -9,15 +9,15 @@ namespace Loom.Server;
 public enum ServerEngine { PostgreSql, SqlServer }
 /// <summary>
 /// Initial server provider using versioned JSON documents. Supply NpgsqlConnection or SqlConnection.
-/// Owns the supplied connection. Schema changes require explicit future migration support.
+/// Owns the supplied connection. Schema changes use explicit reviewed migration plans.
 /// </summary>
-public sealed class ServerDocumentStore : IDocumentStore
+public sealed partial class ServerDocumentStore : IDocumentStore, IMigrationStore
 {
     private readonly DbConnection connection;
     private readonly ServerEngine engine;
     private readonly object gate=new();
     private Catalog? catalog;
-    public ProviderInfo Info=>new(engine.ToString(),true,["transactions","optimistic-concurrency","audit","json-document-storage","ef-core"]);
+    public ProviderInfo Info=>new(engine.ToString(),true,["transactions","optimistic-concurrency","audit","json-document-storage","ef-core","schema-migrations"]);
     public ServerDocumentStore(DbConnection connection,ServerEngine engine)
     {
         if(!Enum.IsDefined(engine))throw new ArgumentOutOfRangeException(nameof(engine));
@@ -41,6 +41,7 @@ public sealed class ServerDocumentStore : IDocumentStore
             var text=engine==ServerEngine.PostgreSql?"text":"nvarchar(max)";
             var definitions=new Dictionary<string,string>
             {
+                ["loom_migrations"]=$"id varchar(64) PRIMARY KEY, body {text} NOT NULL",
                 ["loom_schema"]=$"singleton int PRIMARY KEY, model {text} NOT NULL",
                 ["loom_documents"]=$"kind varchar(63) NOT NULL, id varchar(32) NOT NULL, version int NOT NULL, body {text} NOT NULL, PRIMARY KEY(kind,id)",
                 ["loom_audit"]=$"id varchar(32) PRIMARY KEY, kind varchar(63) NOT NULL, document_id varchar(32) NOT NULL, body {text} NOT NULL"
@@ -53,8 +54,9 @@ public sealed class ServerDocumentStore : IDocumentStore
             }
             var model=ModelJson(next);
             var existing=db.Models.AsNoTracking().Where(x=>x.Singleton==1).Select(x=>x.Model).SingleOrDefault();
-            if(existing!=null && existing!=model)throw new LoomException(409,"Server schema differs. This provider does not yet perform application schema migrations.");
+            if(existing!=null && existing!=model)throw new LoomException(409,"Server schema differs. Preview and apply an explicit migration before restarting.");
             if(existing==null){db.Models.Add(new(){Singleton=1,Model=model});db.SaveChanges();}
+            EnsureQueryInfrastructure(db,next);
             tx.Commit();catalog=next;
         }
     }

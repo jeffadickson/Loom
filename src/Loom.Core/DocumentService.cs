@@ -10,8 +10,31 @@ public interface IDocumentHook
     void BeforeSave(JsonObject values);
 }
 public sealed record Page(int Total, IReadOnlyList<Document> Items);
-public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnumerable<IDocumentHook> hooks)
+public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnumerable<IDocumentHook> hooks, IDocumentAccessPolicy? access = null)
 {
+    public bool CanReadField(Field field, Actor actor) => access?.CanRead(field, actor) ?? true;
+    private Document Visible(DocType schema, Document document, Actor actor)
+    {
+        var copy = document.Copy();
+        foreach (var field in schema.Fields.Where(f => !CanReadField(f, actor))) copy.Values.Remove(field.Name);
+        return copy;
+    }
+    private void CheckRecord(DocType schema, Document document, Actor actor)
+    {
+        if (access == null) return;
+        var query = new DocumentQuery(schema.Fields.Single(f => f.Name == schema.TitleField).Id!, Filters: access.Scope(schema, actor));
+        if (Queries.Execute([document], schema, query).Total != 1) throw new LoomException(404, "Document not found.");
+    }
+    private JsonObject Writable(DocType schema, JsonObject values, Actor actor, Document? old = null)
+    {
+        var copy = (JsonObject)values.DeepClone();
+        foreach (var field in schema.Fields.Where(f => !(access?.CanWrite(f, actor) ?? true)))
+        {
+            if (copy.ContainsKey(field.Name)) throw new LoomException(403, "This account cannot write " + field.Label + ".");
+            if (old != null) copy[field.Name] = old.Values[field.Name]?.DeepClone();
+        }
+        return copy;
+    }
     public TypedRepository<T> Repository<T>(Actor actor) where T : class, new() => new(this, catalog, actor);
     public bool Can(string type, Actor actor, string action) => catalog.Get(type).Permissions.TryGetValue(actor.Role, out var grants) && grants.Contains(action);
     private DocType Authorize(string type, Actor actor, string action)
@@ -24,12 +47,16 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
     public Page Query(string type,Actor actor,DocumentQuery query)
     {
         var schema=Authorize(type,actor,"read");var validated=Queries.Validate(schema,query);
-        return store.Transaction(s=>s.Query(schema,validated));
+        var hidden = schema.Fields.Where(f => !CanReadField(f, actor)).Select(f => f.Id).ToHashSet();
+        if (hidden.Contains(validated.SortFieldId) || validated.Filters!.Any(f => hidden.Contains(f.FieldId)) || hidden.Count > 0 && !string.IsNullOrWhiteSpace(validated.Search))
+            throw new LoomException(403, "Query would inspect a restricted field.");
+        validated = validated with { Filters = validated.Filters!.Concat(access?.Scope(schema, actor) ?? []).ToArray() };
+        return store.Transaction(s => { var page = s.Query(schema, validated); return page with { Items = page.Items.Select(d => Visible(schema, d, actor)).ToArray() }; });
     }
     public Document Get(string type, string id, Actor actor)
     {
-        Authorize(type, actor, "read");
-        return store.Transaction(s => Required(s, type, id));
+        var schema = Authorize(type, actor, "read");
+        return store.Transaction(s => { var d = Required(s, type, id); CheckRecord(schema, d, actor); return Visible(schema, d, actor); });
     }
     public Page List(string type, Actor actor, string? search = null, string? sort = null,
         bool descending = false, int skip = 0, int take = 50, string? field = null, string? equals = null)
@@ -50,10 +77,10 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
         var schema = Authorize(type, actor, "create");
         return store.Transaction(s =>
         {
-            var normalized = Validate(schema, values, s, null, actor);
+            var normalized = Validate(schema, Writable(schema, values, actor), s, null, actor);
             var now = DateTimeOffset.UtcNow.ToString("O");
             var d = new Document(Guid.NewGuid().ToString("N"), type, 1, "Draft", now, now, normalized);
-            s.Insert(d); Audit(s, actor, "create", null, d); return d;
+            CheckRecord(schema, d, actor); s.Insert(d); Audit(s, actor, "create", null, d); return Visible(schema, d, actor);
         });
     }
     public Document Update(string type, string id, int version, JsonObject values, Actor actor)
@@ -63,10 +90,11 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
         return store.Transaction(s =>
         {
             var old = Required(s, type, id);
+            CheckRecord(schema, old, actor);
             if (old.Version != version) throw new LoomException(409, "Document changed. Reload before saving.");
             if (old.State != "Draft") throw new LoomException(409, "Only draft documents can be edited.");
-            var d = old with { Version = old.Version + 1, ModifiedAt = DateTimeOffset.UtcNow.ToString("O"), Values = Validate(schema, values, s, id, actor) };
-            s.Replace(d, version); Audit(s, actor, "update", old, d); return d;
+            var d = old with { Version = old.Version + 1, ModifiedAt = DateTimeOffset.UtcNow.ToString("O"), Values = Validate(schema, Writable(schema, values, actor, old), s, id, actor) };
+            CheckRecord(schema, d, actor); s.Replace(d, version); Audit(s, actor, "update", old, d); return Visible(schema, d, actor);
         });
     }
     public Document Transition(string type, string id, int version, string action, Actor actor)
@@ -77,29 +105,41 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
         return store.Transaction(s =>
         {
             var old = Required(s, type, id);
+            CheckRecord(schema, old, actor);
             if (old.Version != version) throw new LoomException(409, "Document changed.");
             if (old.State != (action == "submit" ? "Draft" : "Submitted")) throw new LoomException(409, "Invalid state transition.");
             var d = old with { Version = old.Version + 1, State = action == "submit" ? "Submitted" : "Cancelled", ModifiedAt = DateTimeOffset.UtcNow.ToString("O") };
-            s.Replace(d, version); Audit(s, actor, action, old, d); return d;
+            s.Replace(d, version); Audit(s, actor, action, old, d); return Visible(schema, d, actor);
         });
     }
     public void Delete(string type, string id, int version, Actor actor)
     {
-        if(Authorize(type, actor, "delete").Immutable)throw new LoomException(409,"Immutable records cannot be deleted.");
+        var schema = Authorize(type, actor, "delete");
+        if(schema.Immutable)throw new LoomException(409,"Immutable records cannot be deleted.");
         store.Transaction(s =>
         {
             var old = Required(s, type, id);
+            CheckRecord(schema, old, actor);
             if (old.State != "Draft") throw new LoomException(409, "Only drafts can be deleted.");
             foreach (var other in catalog.Types.Values)
                 foreach (var f in other.Fields.Where(f => f.Type == "Link" && f.Target == type))
-                    if (s.List(other.Name).Any(d => d.Values[f.Name]?.ToString() == id)) throw new LoomException(409, "Document is referenced; remove links first.");
+                    if (s.Query(other, new DocumentQuery(f.Id!, Take:1, Filters:[new(f.Id!,FilterOperator.Equal,JsonValue.Create(id))])).Total > 0) throw new LoomException(409, "Document is referenced; remove links first.");
             s.Delete(type, id, version); Audit(s, actor, "delete", old, null); return 0;
         });
     }
     public IReadOnlyList<AuditEntry> History(string type, string id, Actor actor)
     {
-        Authorize(type, actor, "audit");
-        return store.Transaction(s => s.Audit(type, id));
+        var schema = Authorize(type, actor, "audit");
+        return store.Transaction(s =>
+        {
+            var entries = s.Audit(type, id);
+            if(access == null) return entries;
+            var current = s.Get(type, id) ?? entries.LastOrDefault()?.Before ?? throw new LoomException(404, "Document not found.");
+            CheckRecord(schema, current, actor);
+            // Fail closed if historical ownership differs; never expose another owner's snapshots.
+            foreach (var e in entries) { if(e.Before != null) CheckRecord(schema,e.Before,actor); if(e.After != null) CheckRecord(schema,e.After,actor); }
+            return (IReadOnlyList<AuditEntry>)entries.Select(e => e with { Before = e.Before == null ? null : Visible(schema,e.Before,actor), After = e.After == null ? null : Visible(schema,e.After,actor) }).ToArray();
+        });
     }
     private JsonObject Validate(DocType schema, JsonObject input, IStoreSession session, string? id, Actor actor)
     {
@@ -122,11 +162,12 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
             if(f.Type=="Link")
             {
                 Authorize(f.Target!,actor,"read");
-                if(session.Get(f.Target!,text)==null)throw new LoomException(422,f.Label+" references a missing document.");
+                var linked = session.Get(f.Target!,text) ?? throw new LoomException(422,f.Label+" references a missing document.");
+                CheckRecord(catalog.Get(f.Target!), linked, actor);
                 values[f.Name]=text;
             }
             else values[f.Name]=FieldValues.Normalize(f,node!);
-            if (f.Unique && session.List(schema.Name).Any(d => d.Id != id && d.Values[f.Name]?.ToString() == values[f.Name]?.ToString()))
+            if (f.Unique && session.Query(schema, new DocumentQuery(f.Id!, Take:2, Filters:[new(f.Id!,FilterOperator.Equal,values[f.Name]?.DeepClone())])).Items.Any(d => d.Id != id))
                 throw new LoomException(409, f.Label + " must be unique.");
         }
         if(schema.Fields.Where(f=>f.Type=="Binary").Sum(f=>(long)(values[f.Name]==null?0:Convert.FromBase64String(values[f.Name]!.ToString()).Length))>FieldValues.MaxBinaryBytes)

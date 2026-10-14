@@ -48,6 +48,48 @@ public sealed class SqlServerFixture:IAsyncLifetime,IDatabaseFixture
 public abstract class ServerRepositoryContract(IDatabaseFixture fixture):RepositoryContract
 {
     protected override IDocumentStore Open()=>new ServerDocumentStore(fixture.CreateDatabase(),fixture.Engine);
+    [Fact] public void Migration_preserves_identity_data_audit_and_reports_and_rejects_stale_plans()
+    {
+        using var store=(ServerDocumentStore)Open();var model=Model();var service=Service(store);
+        var before=service.Create("Reading",new(){["Name"]="Calibration run",["Cost"]="123.45"},Admin);
+        var old=model.Get("Reading");
+        var target=new Catalog([old with { Version=2,TitleField="Caption",Fields=old.Fields.Select(f=>f.Name=="Name"?f with{Name="Caption"}:f).Append(new("Calibration","Calibration","Text",Required:true)).ToArray() }]);
+        var fill=new MigrationBackfill(target.Get("Reading").Fields.Single(f=>f.Name=="Calibration").Id!,System.Text.Json.Nodes.JsonValue.Create("CAL-001"));
+        var plan=store.Plan(target,[fill]);Assert.Contains(plan.Changes,c=>c.Kind=="RenameField");
+        Assert.Equal(403,Assert.Throws<LoomException>(()=>store.Apply(plan.Id,new("viewer","Viewer"))).Status);
+        var accepted=store.Apply(plan.Id,Admin);var updated=new DocumentService(accepted,store,[]).Get("Reading",before.Id,Admin);
+        Assert.Equal("Calibration run",updated.Values["Caption"]!.ToString());Assert.Equal("CAL-001",updated.Values["Calibration"]!.ToString());
+        Assert.Equal(before.Id,updated.Id);Assert.Equal(before.Version+1,updated.Version);Assert.False(updated.Values.ContainsKey("Name"));
+        Assert.Single(store.Migrations());Assert.Equal(SchemaIdentity.Hash(target),SchemaIdentity.Hash(store.ReadCatalog()!));
+        Assert.Equal(SchemaIdentity.Hash(target),SchemaIdentity.Hash(store.Apply(plan.Id,Admin)));
+        Assert.Equal("Calibration run",store.Transaction(s=>s.Audit("Reading",before.Id)).Single().After!.Values["Name"]!.ToString());
+        var report=new SavedReport("Results",old.Id!,[new(old.Fields.Single(f=>f.Name=="Name").Id!)]);
+        Assert.Equal("Caption",SavedReports.Run(report,target,new(target,store,[]),Admin).Columns.Single().Name);
+        Assert.Throws<LoomException>(()=>store.Plan(new Catalog([target.Get("Reading") with{Version=3,Fields=target.Get("Reading").Fields.Where(f=>f.Name!="Caption").ToArray(),TitleField="Calibration"}])));
+    }
+    [Fact] public void Failed_migration_rolls_back_prior_batches_schema_and_ledger()
+    {
+        using var store=(ServerDocumentStore)Open();var model=Model();store.Migrate(model);
+        store.Transaction(s=> { for(var i=0;i<201;i++) s.Insert(new(i.ToString("D32"),"Reading",i==200?int.MaxValue:1,"Draft","now","now",new(){["Name"]="row"+i}));return 0; });
+        var old=model.Get("Reading");var target=new Catalog([old with{Version=2,TitleField="Caption",Fields=old.Fields.Select(f=>f.Name=="Name"?f with{Name="Caption"}:f).ToArray()}]);
+        var plan=store.Plan(target);
+        Assert.Throws<OverflowException>(()=>store.Apply(plan.Id,Admin));
+        Assert.Equal(SchemaIdentity.Hash(model),SchemaIdentity.Hash(store.ReadCatalog()!));Assert.Empty(store.Migrations());
+        Assert.Equal(1,store.Transaction(s=>s.Get("Reading",0.ToString("D32")))!.Version);
+        Assert.Equal("row0",store.Transaction(s=>s.Get("Reading",0.ToString("D32")))!.Values["Name"]!.ToString());
+    }
+    [Fact] public void Text_queries_match_utf16_ordinal_order_and_exact_filters()
+    {
+        using var store=Open();var service=Service(store);var schema=Model().Get("Reading");
+        var docs=new[]{"A","a","é","Ω","😀","\uE000","x%_'"}.Select(v=>service.Create("Reading",new(){["Name"]=v},Admin)).ToArray();
+        var field=schema.Fields.Single(f=>f.Name=="Name").Id!;
+        foreach(var descending in new[]{false,true})
+        {
+            var query=new DocumentQuery(field,descending,1,4);
+            Assert.Equal(Queries.Execute(docs,schema,query).Items.Select(d=>d.Id),service.Query("Reading",Admin,query).Items.Select(d=>d.Id));
+        }
+        Assert.Single(service.Query("Reading",Admin,new(field,Filters:[new(field,FilterOperator.Equal,System.Text.Json.Nodes.JsonValue.Create("x%_'"))])).Items);
+    }
     [Fact] public void Numeric_queries_match_reference_order_filters_nulls_and_exact_money()
     {
         using var store=Open();var service=Service(store);var model=Model();var schema=model.Get("Reading");

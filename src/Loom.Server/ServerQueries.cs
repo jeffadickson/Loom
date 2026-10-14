@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Loom.Server;
 
 // Translate only shapes whose ordering/precision match Queries exactly. Text search
-// and unrestricted Decimal on SQL Server retain the reference implementation.
+// retains the reference implementation; scalar ordering is provider-side.
 internal static class ServerQueries
 {
     public static Page? TryExecute(LoomDbContext db,DocType schema,DocumentQuery query)
@@ -20,8 +20,10 @@ internal static class ServerQueries
             "Decimal" when !sqlServer=>"numeric",
             _=>null
         };
-        if(!string.IsNullOrWhiteSpace(query.Search) || NumericType(fields[query.SortFieldId])==null ||
-            query.Filters!.Any(f=>NumericType(fields[f.FieldId])==null))return null;
+        bool Text(Field f) => f.Type is "Text" or "Select" or "Link" or "Date" or "Uri";
+        bool Supported(Field f) => NumericType(f) != null || Text(f);
+        if(!string.IsNullOrWhiteSpace(query.Search) || !Supported(fields[query.SortFieldId]) ||
+            query.Filters!.Any(f=>!Supported(fields[f.FieldId])))return null;
         var parameters=new List<object>();
         string Parameter(object value)
         {
@@ -31,8 +33,10 @@ internal static class ServerQueries
         }
         string Value(Field field)
         {
+            if (sqlServer && NumericType(field) != null) return "q_" + field.Id;
             var path=Parameter(sqlServer?"$.values."+field.Name:field.Name);
-            var json=sqlServer?$"JSON_VALUE(body,{path})":$"(body::jsonb -> 'values' ->> {path})";
+            var json=sqlServer?$"(SELECT v FROM OPENJSON(body) WITH (v nvarchar(max) '$.values.{field.Name}'))":$"(body::jsonb -> 'values' ->> {path})";
+            if (Text(field)) return sqlServer ? $"({json} COLLATE Latin1_General_100_BIN2)" : $"(loom_ordinal({json}) COLLATE \"C\")";
             return $"CAST({json} AS {NumericType(field)})";
         }
         var predicates=new List<string>{"kind="+Parameter(schema.Name)};
@@ -43,7 +47,9 @@ internal static class ServerQueries
             var op=filter.Operator switch{FilterOperator.Equal=>"=",FilterOperator.GreaterThan=>">",_=>"<"};
             // Text parameters plus an explicit numeric cast avoid driver-dependent
             // decimal precision inference and preserve all accepted decimal digits.
-            predicates.Add(value+op+"CAST("+Parameter(filter.Value!.ToString())+" AS "+NumericType(field)+")");
+            var parameter = Parameter(filter.Value!.ToString());
+            var comparison = Text(field) ? (sqlServer ? $"({parameter} COLLATE Latin1_General_100_BIN2)" : $"(loom_ordinal({parameter}) COLLATE \"C\")") : "CAST("+parameter+" AS "+NumericType(field)+")";
+            predicates.Add(value+op+comparison);
         }
         var select="SELECT kind,id,version,body FROM loom_documents WHERE "+string.Join(" AND ",predicates);
         int count=db.Documents.FromSqlRaw(select,parameters.ToArray()).Count();

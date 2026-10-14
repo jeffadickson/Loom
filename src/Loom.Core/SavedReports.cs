@@ -20,6 +20,7 @@ public static class SavedReports
         if (report.Columns.Length == 0 || report.Columns.Select(c => c.FieldId).Distinct().Count() != report.Columns.Length)
             throw new LoomException(422, "Reports need distinct columns.");
         var fields = report.Columns.Select(c => Resolve(c.FieldId)).ToArray();
+        if(fields.Any(f => !service.CanReadField(f,actor))) throw new LoomException(403,"Report contains a restricted field.");
         var page = service.List(type.Name, actor, sort: report.SortFieldId == null ? null : Resolve(report.SortFieldId).Name,
             descending: report.Descending, take: 200, field: report.Filter == null ? null : Resolve(report.Filter.FieldId).Name,
             equals: report.Filter?.Value);

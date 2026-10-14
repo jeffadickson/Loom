@@ -304,3 +304,7 @@ See [SCIENTIFIC_DATA.md](docs/SCIENTIFIC_DATA.md). This is an in-process API; na
 The demo host accepts `Database__Provider=PostgreSql` or `SqlServer` plus `Database__ConnectionString`. Use `--science-demo` to include scientific test results on a persistent provider; `--memory-demo` always selects disposable memory storage. Adding the scientific model to an existing server catalog is rejected until explicit schema migrations are implemented. Use a fresh database for this walkthrough. Provider changes do not move data.
 
 Build the standalone introduction from its served source with `python3 tools/build_introduction.py`. The served page uses external scripts to respect the host content-security policy; the standalone bundle embeds them and explicitly simulates storage.
+
+## Laboratory register
+
+The scientific demo now links instruments, specimens, runs and results, with a printable run report. Open `/laboratory.html` on the running demo. See [Laboratory setup, accounts, migrations and limitations](docs/LABORATORY.md).

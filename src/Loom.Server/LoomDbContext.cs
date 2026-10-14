@@ -6,12 +6,16 @@ namespace Loom.Server;
 // no EF model cache is keyed by an editable application catalog.
 internal sealed class LoomDbContext(DbContextOptions<LoomDbContext> options):DbContext(options)
 {
+    public DbSet<StoredMigration> Migrations=>Set<StoredMigration>();
     public DbSet<StoredModel> Models=>Set<StoredModel>();
     public DbSet<StoredDocument> Documents=>Set<StoredDocument>();
     public DbSet<StoredAudit> Audits=>Set<StoredAudit>();
     protected override void OnModelCreating(ModelBuilder model)
     {
         string text=Database.IsSqlServer()?"nvarchar(max)":"text";
+        var migration=model.Entity<StoredMigration>();migration.ToTable("loom_migrations");migration.HasKey(x=>x.Id);
+        migration.Property(x=>x.Id).HasColumnName("id").HasColumnType("varchar(64)");
+        migration.Property(x=>x.Body).HasColumnName("body").HasColumnType(text);
         var schema=model.Entity<StoredModel>();schema.ToTable("loom_schema");schema.HasKey(x=>x.Singleton);
         schema.Property(x=>x.Singleton).HasColumnName("singleton").ValueGeneratedNever();
         schema.Property(x=>x.Model).HasColumnName("model").HasColumnType(text).IsRequired();
@@ -44,5 +48,11 @@ internal sealed class StoredAudit
     public string Id {get;set;}="";
     public string Kind {get;set;}="";
     public string DocumentId {get;set;}="";
+    public string Body {get;set;}="";
+}
+
+internal sealed class StoredMigration
+{
+    public string Id {get;set;}="";
     public string Body {get;set;}="";
 }
