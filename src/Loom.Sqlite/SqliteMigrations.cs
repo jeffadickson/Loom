@@ -97,7 +97,7 @@ public sealed partial class SqliteStore
             using var count = MigrationCommand($"SELECT COUNT(*) FROM {Q(old.Name)}", tx); rows[old.Name] = (long)count.ExecuteScalar()!;
             if (JsonSerializer.Serialize(old, Catalog.Json) == JsonSerializer.Serialize(next, Catalog.Json)) continue;
             if (next.Version <= old.Version) throw new InvalidOperationException("Schema changes require a higher model version: " + old.Name);
-            if (next.Submittable != old.Submittable || JsonSerializer.Serialize(next.Permissions) != JsonSerializer.Serialize(old.Permissions))
+            if (next.Immutable != old.Immutable || next.Submittable != old.Submittable || JsonSerializer.Serialize(next.Permissions) != JsonSerializer.Serialize(old.Permissions))
                 throw new InvalidOperationException("Lifecycle and permission changes require a separate migration.");
             var sqlStart=sql.Count;
             var renames = new List<(Field Old, Field Next)>();
@@ -107,7 +107,7 @@ public sealed partial class SqliteStore
                 if (after == null) throw new InvalidOperationException("Field removal/identity replacement is blocked; retain the permanent field ID: " + before.Name);
                 var tightening=!before.Required && after.Required;
                 var converting=RepresentationChanged(before,after);
-                var comparable = after with { Name=before.Name, Label=before.Label, Required=before.Required, Type=before.Type, Precision=before.Precision, Scale=before.Scale, Currency=before.Currency, Rounding=before.Rounding, DateFormat=before.DateFormat, Options=before.Options, Compression=before.Compression, MaxBytes=before.MaxBytes, MediaType=before.MediaType };
+                var comparable = after with { Name=before.Name, Label=before.Label, Required=before.Required, Type=before.Type, Precision=before.Precision, Scale=before.Scale, Currency=before.Currency, Rounding=before.Rounding, DateFormat=before.DateFormat, Options=before.Options, Compression=before.Compression, MaxBytes=before.MaxBytes, MediaType=before.MediaType, QuantityKind=before.QuantityKind, AllowedUnits=before.AllowedUnits };
                 if (JsonSerializer.Serialize(before) != JsonSerializer.Serialize(comparable))
                     throw new InvalidOperationException("Type/constraint changes require conversion or backfill planning: " + before.Name);
                 if(converting)

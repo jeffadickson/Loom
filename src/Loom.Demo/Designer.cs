@@ -8,9 +8,9 @@ namespace Loom.Demo;
 
 public sealed record FieldEdit(string Id, string Name, string Label, bool? Required = null, JsonNode? Backfill = null, string? Type = null, FieldSettings? Settings = null);
 public sealed record FieldAddition(string Name, string Label, string Type, string? Id = null, bool Required = false, JsonNode? Backfill = null, FieldSettings? Settings = null);
-public sealed record FieldSettings(int? Precision=null,int? Scale=null,string? Currency=null,string Rounding="reject",string DateFormat="yyyy-MM-dd",string[]? Options=null,string Compression="auto",int MaxBytes=8388608,string MediaType="application/octet-stream")
+public sealed record FieldSettings(int? Precision=null,int? Scale=null,string? Currency=null,string Rounding="reject",string DateFormat="yyyy-MM-dd",string[]? Options=null,string Compression="auto",int MaxBytes=8388608,string MediaType="application/octet-stream", string? QuantityKind=null, string[]? AllowedUnits=null, string? Description=null, int? MaxLength=null, decimal? Minimum=null, decimal? Maximum=null, string? Default=null)
 {
-    public Field Apply(Field f)=>f with {Precision=Precision,Scale=Scale,Currency=Currency,Rounding=Rounding,DateFormat=DateFormat,Options=Options,Compression=Compression,MaxBytes=MaxBytes,MediaType=MediaType};
+    public Field Apply(Field f)=>f with {Precision=Precision,Scale=Scale,Currency=Currency,Rounding=Rounding,DateFormat=DateFormat,Options=Options,Compression=Compression,MaxBytes=MaxBytes,MediaType=MediaType,QuantityKind=QuantityKind,AllowedUnits=AllowedUnits,Description=Description,MaxLength=MaxLength,Minimum=Minimum,Maximum=Maximum,Default=Default};
 }
 public sealed record DesignRequest(string SourceHash, string Type, FieldEdit[] Fields, FieldAddition[] Additions);
 public sealed record ApplyRequest(string PlanId);
@@ -40,7 +40,7 @@ public static class Designer
         }
         foreach (var added in request.Additions)
         {
-            if (!new[] { "Text", "Integer", "Decimal", "Date", "Boolean", "Money", "Binary", "Uri", "Select" }.Contains(added.Type)) throw new LoomException(422, "Unsupported field type.");
+            if (!new[] { "Text", "Integer", "Decimal", "Date", "Boolean", "Money", "Binary", "Uri", "Select", "Measurement" }.Contains(added.Type)) throw new LoomException(422, "Unsupported field type.");
             if (string.IsNullOrWhiteSpace(added.Label)) throw new LoomException(422, "New fields need a caption.");
             if(!added.Required && added.Backfill!=null)throw new LoomException(422,"Backfills apply to required additions only.");
             var newField=new Field(added.Name, added.Label, added.Type, Required: added.Required, Id: added.Id ?? Guid.NewGuid().ToString("N"));
@@ -55,12 +55,14 @@ public static class Designer
         using var memory = new MemoryStream();
         using (var zip = new ZipArchive(memory, ZipArchiveMode.Create, true))
         {
-            foreach (var t in catalog.Types.Values)
+            foreach (var t in catalog.Types.Values.OrderBy(t=>t.Name,StringComparer.Ordinal))
             {
                 var entry = zip.CreateEntry("Metadata/" + t.Name + ".json");
-                using var writer = new StreamWriter(entry.Open(), Encoding.UTF8); writer.Write(JsonSerializer.Serialize(t, Catalog.Json));
+                entry.LastWriteTime=new DateTimeOffset(1980,1,1,0,0,0,TimeSpan.Zero);
+                using var writer = new StreamWriter(entry.Open(), Encoding.UTF8); writer.Write(JsonSerializer.Serialize(t with{Permissions=t.Permissions.OrderBy(p=>p.Key,StringComparer.Ordinal).ToDictionary(p=>p.Key,p=>p.Value)}, Catalog.Json));
             }
             var readme = zip.CreateEntry("README.txt");
+            readme.LastWriteTime=new DateTimeOffset(1980,1,1,0,0,0,TimeSpan.Zero);
             using var text = new StreamWriter(readme.Open(), Encoding.UTF8);
             text.Write("Exported accepted Loom model. Preserve all permanent IDs. Copy the Metadata files into the source project, run --generate, and rebuild. Generated C# data shapes are not updated inside a running process. Deploy the reviewed model using migration planning; changing connection strings does not transfer data.\nSchema fingerprint: " + SchemaIdentity.Hash(catalog));
         }

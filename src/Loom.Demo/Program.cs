@@ -77,7 +77,7 @@ if (storedCatalog == null && service.List("Asset", admin).Total == 0)
 if(memoryDemo)
 {
     var results=service.Repository<TestResultModel>(admin);
-    results.Create(new(){Name="Thermal cycle • channel 1",Outcome="Pass",SampleCount=9007199254740993,Cost=1234.56m,Waveform=Enumerable.Range(0,4096).Select(i=>(byte)(i%16)).ToArray(),Series=new Uri("tsdb://example.test/thermal/run-001?channel=1")});
+    results.Create(new(){Name="Thermal cycle • channel 1",Outcome="Pass",Temperature=new(new(25,Loom.Core.Science.Units.Celsius),.1),SampleCount=9007199254740993,Cost=1234.56m,Waveform=Enumerable.Range(0,4096).Select(i=>(byte)(i%16)).ToArray(),Series=new Uri("tsdb://example.test/thermal/run-001?channel=1")});
     results.Create(new(){Name="Vibration sweep • channel 2",Outcome="Review",SampleCount=64000,Cost=87.40m,Waveform=Encoding.UTF8.GetBytes("Example test result payload"),Series=new Uri("https://example.test/results/run-002")});
 }
 // This is an explicitly local demonstration, not an authentication implementation.
@@ -128,6 +128,7 @@ app.MapGet("/api/meta", (HttpContext c) =>
 });
 app.MapGet("/api/documents/{type}", (string type, HttpContext c, string? search, string? sort, bool? descending, int? skip, int? take, string? field, string? equals) =>
     WireJson.Encode(service.List(type, Current(c), search, sort, descending ?? false, skip ?? 0, take ?? 50, field, equals)));
+app.MapPost("/api/documents/{type}/query", (string type, DocumentQuery query, HttpContext c) => WireJson.Encode(service.Query(type,Current(c),query)));
 app.MapGet("/api/documents/{type}/{id}", (string type, string id, HttpContext c) => WireJson.Encode(service.Get(type, id, Current(c))));
 app.MapPost("/api/documents/{type}", (string type, JsonObject values, HttpContext c) =>
 {

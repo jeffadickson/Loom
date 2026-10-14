@@ -92,6 +92,9 @@ try
     count += RequiredFieldTests.Run(temp);
     count += ConversionTests.Run(temp);
     count += DataTypeTests.Run(temp);
+    count += MeasurementTests.Run(temp);
+    count += ScienceFoundationTests.Run(temp);
+    count += QueryTests.Run(temp);
     Console.WriteLine($"\n{count} checks passed.");
 }
 finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();Directory.Delete(temp,true); }

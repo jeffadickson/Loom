@@ -1,6 +1,6 @@
-# Scientific quantities: first implementation
+# Scientific data contracts
 
-Issue #1 implements an in-process C# foundation in `Loom.Core.Science`. Issue #2 tracks native field/catalog, persistence, migrations, forms and reports. No new database field kind is claimed by this first slice.
+`Loom.Core.Science` now includes quantities, native measurement fields, compressed array foundations, provenance references, timing/quality masks and an authorized dataset adapter boundary. See [the ten-issue progress report](NEXT_TEN_PROGRESS.md) for completed work and remaining integration gaps.
 
 ```csharp
 using Loom.Core.Science;
@@ -33,7 +33,7 @@ Values use finite IEEE binary64 (`double`) for scientific measurements, not fina
 
 `ExpandedUncertainty(k)` requires specified uncertainty and a finite positive coverage factor. It returns a width in the current unit interval. It does not return a confidence probability; a chosen factor such as 2 does not by itself establish coverage. Covariance, correlated inputs, distribution models and uncertainty propagation through arbitrary algorithms remain outside this API.
 
-Unsupported operations fail with `LoomException(422, ...)`; null programmer arguments use `ArgumentNullException`. These plain C# objects are not yet a supported persistence/JSON interchange contract. Do not assume serializing a Unit object establishes a stable schema.
+Unsupported operations fail with `LoomException(422, ...)`; null programmer arguments use `ArgumentNullException`. `Measurement` has a supported JSON converter; standalone `Unit` serialization is not an interchange contract.
 
 ## Validation and execution
 
@@ -44,6 +44,26 @@ dotnet run --project tests/Loom.Tests -- .
 dotnet run --project examples/Loom.Science
 ```
 
-Next: native model fields and persistence (#2), typed array/chunk storage (#3), provenance (#4), timing/quality masks (#5), external adapters (#6). Production security and operational gates remain independently tracked; adding scientific primitives does not make the prototype production-ready.
+Further work: provenance integration with measurement records (#2/#4), durable array/chunk storage (#3), external adapters (#6). Production security and operational gates remain independently tracked; adding scientific primitives does not make the prototype production-ready.
 
 Reference for uncertainty terminology: [NIST TN 1297, reporting uncertainty](https://www.nist.gov/pml/nist-technical-note-1297/nist-tn-1297-7-reporting-uncertainty). The API deliberately keeps standard uncertainty and an explicitly chosen coverage factor separate.
+
+## Native measurement fields
+
+Decorate a `Measurement?` property with `QuantityKind="Temperature"` and `AllowedUnits=new[]{"degC","K"}`. The field type is inferred. Standard uncertainty always means a nonnegative standard uncertainty in the corresponding unit interval; null is unknown. API values use:
+
+```json
+{"value":"25","unit":"degC","standardUncertainty":"0.1"}
+```
+
+Numbers are invariant round-trip binary64 strings. Memory and SQLite preserve the original unit and uncertainty, including audit snapshots. SQLite stores this compound value as JSON text. Unit-list changes preflight existing values; removing a populated unit is refused. No automatic canonical-unit rewrite occurs. Generated forms edit value, unit and uncertainty independently; reports display all three. Quantity aggregation and ordering require explicit scientific semantics and are not offered by the new scalar query API.
+
+## Arrays, clocks and references
+
+`ScientificArray` owns compressed, checksummed chunks and copies input metadata/data. `ReadElements` addresses flattened elements and decompresses only overlapping chunks. Dtype, byte order, shape, axes, unit and affine scaling are explicit. Float data defaults to finite-only; allow NaN/infinity explicitly when needed. This is currently an in-memory representation; a durable chunk-store format and persisted quality-mask binding remain open.
+
+`SampleTiming` uses decimal seconds relative to `SampleClock.Epoch`, with an explicit UTC, TAI, GPS or monotonic scale. It never converts between scales or interprets a leap second. Resolution is declared metadata, not implicit quantization. Coordinates must increase strictly; uniform and irregular grids retain gaps. Per-sample flags distinguish missing, saturated, unsynchronized and suspect samples. Selection returns original indexes; clock offsets return a new timing object. Unknown synchronization uncertainty remains null.
+
+`DocumentRevision.Capture` performs an authorized read and hashes the serialized revision. This detects a changed snapshot but is neither a signature nor a replacement for retained revision history. `RunProvenance.Validate` validates references, operator/software and algorithm parameters. Persisting and verifying the complete graph atomically is still open. Immutable DocTypes reject service updates/deletes; direct database administration remains outside this service-level guarantee.
+
+`DatasetGateway` validates versioned opaque references, authorizes before invoking an adapter, and checks returned byte/sample budgets. Adapters must enforce budgets while reading and honor cancellation. Credentials belong to adapter configuration. No HDF5/NeXus or time-series adapter is included yet.

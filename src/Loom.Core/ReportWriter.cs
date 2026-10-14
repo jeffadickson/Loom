@@ -49,6 +49,7 @@ public static class ReportWriter
         {
             "Link" => LinkTitle(fields[i], value.ToString()),
             "Boolean" => value.GetValue<bool>() ? "Yes" : "No",
+            "Measurement" => Science.MeasurementJson.Format(value),
             "Money" => fields[i].Currency + " " + value.GetValue<decimal>().ToString("F"+(fields[i].Scale??2), CultureInfo.InvariantCulture),
             "Decimal" => value.GetValue<decimal>().ToString("#,0.00##########################", CultureInfo.InvariantCulture),
             "Integer" => value.GetValue<long>().ToString("N0", CultureInfo.InvariantCulture),

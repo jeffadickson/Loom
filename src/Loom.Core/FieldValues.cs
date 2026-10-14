@@ -10,6 +10,8 @@ public static class FieldValues
     public const int MaxBinaryBytes=8*1024*1024;
     public static void ValidateDefinition(Field f)
     {
+        Science.MeasurementJson.ValidateDefinition(f);
+        if(f.MaxLength is <1 or >2000 || f.MaxLength!=null && f.Type!="Text" || f.Minimum>f.Maximum || (f.Minimum!=null || f.Maximum!=null) && f.Type is not ("Integer" or "Decimal" or "Money"))throw new InvalidOperationException("Invalid field bounds or text length.");
         if(f.Options!=null && f.Type!="Select" || f.Target!=null && f.Type!="Link")throw new InvalidOperationException("Options belong to Select fields; targets belong to Link fields.");
         if(f.Type!="Binary" && (f.Compression!="auto" || f.MaxBytes!=MaxBinaryBytes || f.MediaType!="application/octet-stream"))throw new InvalidOperationException("Compression, byte limits and media types apply to Binary fields only.");
         if(f.Type!="Date" && f.DateFormat!="yyyy-MM-dd")throw new InvalidOperationException("Date formats apply to Date fields only.");
@@ -23,6 +25,8 @@ public static class FieldValues
         if(f.Compression is not ("auto" or "none" or "brotli") || f.MaxBytes<1 || f.MaxBytes>MaxBinaryBytes)throw new InvalidOperationException("Invalid binary compression or byte limit.");
         if(!Regex.IsMatch(f.MediaType,"^[A-Za-z0-9.+-]+/[A-Za-z0-9.+-]+$"))throw new InvalidOperationException("Invalid media type.");
         if(f.Type=="Binary" && (f.Unique || f.ReadOnly))throw new InvalidOperationException("Binary unique/computed fields are unsupported.");
+        if(f.Type=="Select" && f.Options is not {Length:>0})throw new InvalidOperationException("Select requires options.");
+        if(f.Default!=null){if(f.ReadOnly || f.Type is "Binary" or "Measurement" or "Link")throw new InvalidOperationException("Defaults are unsupported for computed, binary, measurement and link fields.");Normalize(f with{Default=null},JsonValue.Create(f.Default)!);}
     }
 
     // Parse the coefficient before constructing decimal: decimal.TryParse can round long fractions.
@@ -65,8 +69,11 @@ public static class FieldValues
 
     public static JsonNode Normalize(Field f, JsonNode value)
     {
+        if(f.Type=="Measurement")return Science.MeasurementJson.Normalize(f,value);
         if(value is JsonObject or JsonArray)throw new LoomException(422,f.Label+" must be scalar.");
         var text=value.ToString().Trim();
+        if(f.MaxLength is int max && text.Length>max)throw new LoomException(422,f.Label+" exceeds maximum length.");
+        if(f.Minimum!=null || f.Maximum!=null){var number=Decimal(text,f.Type=="Integer"?new Field(f.Name,f.Label,"Decimal"):f);if(number<f.Minimum || number>f.Maximum)throw new LoomException(422,f.Label+" is outside its bounds.");}
         switch(f.Type)
         {
             case "Integer":

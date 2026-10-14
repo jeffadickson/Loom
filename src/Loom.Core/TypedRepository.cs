@@ -32,7 +32,7 @@ public sealed class TypedRepository<T> where T : class, new()
             var field = schema.Fields.SingleOrDefault(f => f.Id == id)
                 ?? throw new InvalidOperationException("Typed property has an unknown field identity: " + p.Name);
             var source = declared.Fields.Single(f => f.Id == id);
-            if (source.Type != field.Type || source.Target != field.Target || source.Currency!=field.Currency)
+            if (source.Type != field.Type || source.Target != field.Target || source.Currency!=field.Currency || source.QuantityKind!=field.QuantityKind)
                 throw new InvalidOperationException("Typed property no longer matches the field type: " + p.Name);
             if (p.SetMethod?.IsPublic != true || p.GetMethod?.IsPublic != true)
                 throw new InvalidOperationException("Typed properties need public getters and setters: " + p.Name);
@@ -58,7 +58,8 @@ public sealed class TypedRepository<T> where T : class, new()
     {
         var field = Resolve(property);
         var node = JsonSerializer.SerializeToNode(value, Catalog.Json);
-        return ListCore(sortBy, descending, skip, take, null, field.Name, node?.ToString() ?? "");
+        var page=service.Query(schema.Name,actor,new((sortBy==null?schema.Fields.Single(f=>f.Name==schema.TitleField):Resolve(sortBy)).Id!,descending,skip,take,[new(field.Id!,node==null?FilterOperator.IsNull:FilterOperator.Equal,node)]));
+        return new(page.Total,page.Items.Select(Read).ToArray());
     }
     private TypedPage<T> ListCore(Expression<Func<T, object?>>? sort, bool descending, int skip, int take, string? search, string? field, string? value)
     {

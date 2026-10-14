@@ -12,5 +12,6 @@ public sealed class TestResultModel
     [Field("cc000000000000000000000000000004")] public long? SampleCount {get;set;}
     [Field("cc000000000000000000000000000005",Currency="USD",Precision=19,Scale=2)] public decimal? Cost {get;set;}
     [Field("cc000000000000000000000000000006",Compression="auto",MaxBytes=1048576,MediaType="application/octet-stream")] public byte[]? Waveform {get;set;}
+    [Field("cc000000000000000000000000000008",QuantityKind="Temperature",AllowedUnits=new[]{"degC","K","degF"})] public Loom.Core.Science.Measurement? Temperature {get;set;}
     [Field("cc000000000000000000000000000007")] public Uri? Series {get;set;}
 }

@@ -1,0 +1,12 @@
+<Project>
+  <!-- Set LoomMetadataDirectory and LoomModelTool before importing. The tool must be built first. -->
+  <PropertyGroup>
+    <LoomDotNet Condition="'$(LoomDotNet)' == ''">dotnet</LoomDotNet>
+  </PropertyGroup>
+  <Target Name="GenerateLoomModels" BeforeTargets="CoreCompile" Condition="'$(LoomMetadataDirectory)' != ''">
+    <PropertyGroup><LoomGeneratedDirectory Condition="'$(LoomGeneratedDirectory)' == ''">$(IntermediateOutputPath)LoomGenerated</LoomGeneratedDirectory></PropertyGroup>
+    <Error Condition="!Exists('$(LoomModelTool)')" Text="LOOM002: Build Loom.ModelTool and set LoomModelTool to its DLL path." />
+    <Exec Command="&quot;$(LoomDotNet)&quot; &quot;$(LoomModelTool)&quot; &quot;$(LoomMetadataDirectory)&quot; &quot;$(LoomGeneratedDirectory)&quot;" />
+    <ItemGroup><Compile Include="$(LoomGeneratedDirectory)/*.g.cs" /></ItemGroup>
+  </Target>
+</Project>

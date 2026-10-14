@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Loom.Server/Loom.Server.csproj" />
+    <PackageReference Include="Npgsql" Version="8.0.8" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.3" />
+  </ItemGroup>
+</Project>

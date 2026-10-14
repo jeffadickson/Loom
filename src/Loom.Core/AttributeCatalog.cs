@@ -11,6 +11,7 @@ public sealed class DocumentAttribute(string id, string titleProperty) : Attribu
     public string? Label { get; set; }
     public int Version { get; set; } = 1;
     public bool Submittable { get; set; }
+    public bool Immutable {get;set;}
 }
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class FieldAttribute(string id) : Attribute
@@ -24,6 +25,13 @@ public sealed class FieldAttribute(string id) : Attribute
     public string? Target { get; set; }
     public string[]? Options { get; set; }
     public string? Kind { get; set; }
+    public string? Description {get;set;}
+    public int MaxLength {get;set;} = -1;
+    public string? Minimum {get;set;}
+    public string? Maximum {get;set;}
+    public string? Default {get;set;}
+    public string? QuantityKind { get; set; }
+    public string[]? AllowedUnits { get; set; }
     public string? Currency { get; set; }
     public int Precision { get; set; } = -1;
     public int Scale { get; set; } = -1;
@@ -41,6 +49,7 @@ public sealed class GrantAttribute(string role, params string[] actions) : Attri
 }
 public static class AttributeCatalog
 {
+    private static decimal? ParseBound(string? value)=>value==null?null:FieldValues.Decimal(value,new("bound","Bound","Decimal"));
     public static Catalog From(params Type[] models) => new(models.Select(Describe));
     internal static DocType Describe(Type model)
     {
@@ -53,7 +62,7 @@ public static class AttributeCatalog
             if (p.GetIndexParameters().Length != 0 || p.GetMethod == null) throw new InvalidOperationException("Fields must be readable, non-indexed properties.");
             var type = Nullable.GetUnderlyingType(p.PropertyType) ?? p.PropertyType;
             var kind = type == typeof(string) ? "Text" : type == typeof(int) || type == typeof(long) ? "Integer" :
-                type == typeof(decimal) ? "Decimal" : type == typeof(bool) ? "Boolean" : type == typeof(DateOnly) ? "Date" : type == typeof(byte[]) ? "Binary" : type == typeof(Uri) ? "Uri" :
+                type == typeof(Science.Measurement) ? "Measurement" : type == typeof(decimal) ? "Decimal" : type == typeof(bool) ? "Boolean" : type == typeof(DateOnly) ? "Date" : type == typeof(byte[]) ? "Binary" : type == typeof(Uri) ? "Uri" :
                 throw new InvalidOperationException("Unsupported field CLR type: " + type.Name);
             if (f.Target != null || f.Options != null)
             {
@@ -63,11 +72,11 @@ public static class AttributeCatalog
             if(f.Currency!=null){if(type!=typeof(decimal))throw new InvalidOperationException("Money properties use decimal.");kind="Money";}
             if(f.Kind!=null){if(f.Kind!="Uri" || type!=typeof(string))throw new InvalidOperationException("Only string Uri override is supported.");kind="Uri";}
             if (!Guid.TryParseExact(f.Id, "N", out _)) throw new InvalidOperationException("An explicit permanent field ID is required.");
-            return new Field(f.Name ?? p.Name, f.Label ?? p.Name, kind, f.Required, f.Unique, f.ReadOnly, f.Target, f.Options, f.Id, f.Precision<0?null:f.Precision, f.Scale<0?null:f.Scale, f.Currency, f.Rounding, f.DateFormat, f.Compression, f.MaxBytes, f.MediaType);
+            return new Field(f.Name ?? p.Name, f.Label ?? p.Name, kind, f.Required, f.Unique, f.ReadOnly, f.Target, f.Options, f.Id, f.Precision<0?null:f.Precision, f.Scale<0?null:f.Scale, f.Currency, f.Rounding, f.DateFormat, f.Compression, f.MaxBytes, f.MediaType, f.QuantityKind, f.AllowedUnits, f.Description, f.MaxLength<0?null:f.MaxLength, ParseBound(f.Minimum), ParseBound(f.Maximum), f.Default);
         }).ToArray();
         var title = Array.FindIndex(properties, p => p.Name == doc.TitleProperty);
         if (title < 0) throw new InvalidOperationException("TitleProperty must identify a decorated property.");
         return new DocType(doc.Name ?? model.Name, doc.Label ?? model.Name, doc.Version, fields[title].Name,
-            doc.Submittable, fields, model.GetCustomAttributes<GrantAttribute>().ToDictionary(g => g.Role, g => g.Actions), doc.Id);
+            doc.Submittable, fields, model.GetCustomAttributes<GrantAttribute>().ToDictionary(g => g.Role, g => g.Actions), doc.Id, doc.Immutable);
     }
 }

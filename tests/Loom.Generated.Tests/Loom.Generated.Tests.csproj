@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <LoomMetadataDirectory>$(MSBuildThisFileDirectory)Metadata</LoomMetadataDirectory>
+    <LoomModelTool>$(MSBuildThisFileDirectory)../../src/Loom.ModelTool/bin/$(Configuration)/net8.0/Loom.ModelTool.dll</LoomModelTool>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../../src/Loom.Core/Loom.Core.csproj" /></ItemGroup>
+  <Import Project="../../build/Loom.Models.targets" />
+</Project>

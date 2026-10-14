@@ -15,7 +15,7 @@ public sealed partial class SqliteStore
         return result;
     }
     private static bool RepresentationChanged(Field before,Field after) =>
-        before.Type!=after.Type || before.Precision!=after.Precision || before.Scale!=after.Scale || before.Currency!=after.Currency || before.Rounding!=after.Rounding || before.DateFormat!=after.DateFormat ||
+        before.QuantityKind!=after.QuantityKind || JsonSerializer.Serialize(before.AllowedUnits)!=JsonSerializer.Serialize(after.AllowedUnits) || before.Type!=after.Type || before.Precision!=after.Precision || before.Scale!=after.Scale || before.Currency!=after.Currency || before.Rounding!=after.Rounding || before.DateFormat!=after.DateFormat ||
         JsonSerializer.Serialize(before.Options)!=JsonSerializer.Serialize(after.Options) || before.Compression!=after.Compression || before.MaxBytes!=after.MaxBytes || before.MediaType!=after.MediaType;
     private static string SchemaLiteral(Field field)=>"'"+JsonSerializer.Serialize(field,Catalog.Json).Replace("'","''")+"'";
     private static void CheckConversion(Field before,Field after)
@@ -30,6 +30,7 @@ public sealed partial class SqliteStore
     private static object? ConvertFieldValue(object? raw,Field before,Field after)
     {
         if(raw==null || raw is DBNull)return null;
+        if(before.Type=="Measurement")return FieldValues.Normalize(after,JsonNode.Parse((string)raw)!).ToJsonString();
         if(before.Type=="Binary")
         {
             if(raw is not byte[] envelope)throw new LoomException(422,"Invalid binary storage.");

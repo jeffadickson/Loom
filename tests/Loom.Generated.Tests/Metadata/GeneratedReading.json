@@ -1,0 +1,11 @@
+{
+  "name": "GeneratedReading", "label": "Generated reading", "version": 1,
+  "id": "11aabbccddeeff001122334455667788", "titleField": "Name", "submittable": false,
+  "immutable": true,
+  "permissions": {"Admin": ["read", "create", "audit"]},
+  "fields": [
+    {"name": "Name", "label": "Name", "type": "Text", "id": "22aabbccddeeff001122334455667788", "required": true, "maxLength": 80, "default": "Reading", "description": "Source label"},
+    {"name": "Temperature", "label": "Temperature", "type": "Measurement", "id": "33aabbccddeeff001122334455667788", "quantityKind": "Temperature", "allowedUnits": ["K", "degC"]},
+    {"name": "Count", "label": "Count", "type": "Integer", "id": "44aabbccddeeff001122334455667788", "minimum": 0, "maximum": 100}
+  ]
+}

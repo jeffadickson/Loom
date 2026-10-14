@@ -21,6 +21,7 @@ public interface IDocumentStore : IDisposable
 }
 public interface IStoreSession
 {
+    Page Query(DocType schema,DocumentQuery query)=>Queries.Execute(List(schema.Name),schema,query);
     Document? Get(string type, string id);
     IReadOnlyList<Document> List(string type);
     void Insert(Document document);
@@ -36,7 +37,13 @@ public sealed class MemoryStore : IDocumentStore, IStoreSession
     private List<AuditEntry> audit = [];
     private readonly object gate = new();
     public ProviderInfo Info => new("Memory", false, ["transactions", "optimistic-concurrency", "audit"]);
-    public void Migrate(Catalog catalog) { }
+    public void Migrate(Catalog catalog)
+    {
+        lock(gate)
+            foreach(var document in documents.Values)
+                foreach(var field in catalog.Get(document.Type).Fields.Where(f=>f.Type=="Measurement"))
+                    if(document.Values[field.Name] is JsonNode value)FieldValues.Normalize(field,value);
+    }
     public T Transaction<T>(Func<IStoreSession, T> action)
     {
         lock (gate)

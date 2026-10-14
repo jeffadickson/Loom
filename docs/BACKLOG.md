@@ -10,7 +10,7 @@ Implemented baseline: scalar models, typed repositories, local role checks, Memo
 | [#2](https://github.com/jeffadickson/Loom/issues/2) | SCI-02 | Integrate scientific quantities into model fields and persistence |
 | [#3](https://github.com/jeffadickson/Loom/issues/3) | SCI-03 | Scientific typed arrays and chunked binary storage |
 | [#4](https://github.com/jeffadickson/Loom/issues/4) | SCI-04 | Scientific run provenance and immutable raw results |
-| [#5](https://github.com/jeffadickson/Loom/issues/5) | SCI-05 | Scientific timing and sample quality masks |
+| [#5](https://github.com/jeffadickson/Loom/issues/5) | SCI-05 | Scientific timing and sample quality masks — completed |
 | [#6](https://github.com/jeffadickson/Loom/issues/6) | SCI-06 | External dataset references and scientific interchange adapters |
 | [#7](https://github.com/jeffadickson/Loom/issues/7) | META-07/08/11 | Build-time model generation and diagnostics |
 | [#8](https://github.com/jeffadickson/Loom/issues/8) | META-06/09 | Complete metadata constraints and model designer |
@@ -40,4 +40,4 @@ Implemented baseline: scalar models, typed repositories, local role checks, Memo
 | [#32](https://github.com/jeffadickson/Loom/issues/32) | META-05/10 | Application packaging and singleton/tree/virtual models |
 | [#33](https://github.com/jeffadickson/Loom/issues/33) | GOV-01 | Resolve license and remaining architecture decisions |
 
-Completed first slice: #1 quantity/uncertainty primitives, with 87 scientific checks and a runnable example. Next scientific task: #2 native document-field integration; arrays, timing, provenance and adapters have independent acceptance criteria in #3–6.
+The #2–#11 batch has implementation and verification progress recorded in [NEXT_TEN_PROGRESS.md](NEXT_TEN_PROGRESS.md). #5 timing/quality masks meets its listed acceptance criteria; all other issues in this batch retain explicit remaining work. The new server providers compile; live-server validation is not yet claimed.

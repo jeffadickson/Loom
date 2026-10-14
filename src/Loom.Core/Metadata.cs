@@ -4,9 +4,9 @@ using System.Text.RegularExpressions;
 namespace Loom.Core;
 
 public sealed record Field(string Name, string Label, string Type, bool Required = false,
-    bool Unique = false, bool ReadOnly = false, string? Target = null, string[]? Options = null, string? Id = null, int? Precision = null, int? Scale = null, string? Currency = null, string Rounding = "reject", string DateFormat = "yyyy-MM-dd", string Compression = "auto", int MaxBytes = 8388608, string MediaType = "application/octet-stream");
+    bool Unique = false, bool ReadOnly = false, string? Target = null, string[]? Options = null, string? Id = null, int? Precision = null, int? Scale = null, string? Currency = null, string Rounding = "reject", string DateFormat = "yyyy-MM-dd", string Compression = "auto", int MaxBytes = 8388608, string MediaType = "application/octet-stream", string? QuantityKind = null, string[]? AllowedUnits = null, string? Description = null, int? MaxLength = null, decimal? Minimum = null, decimal? Maximum = null, string? Default = null);
 public sealed record DocType(string Name, string Label, int Version, string TitleField,
-    bool Submittable, Field[] Fields, Dictionary<string, string[]> Permissions, string? Id = null);
+    bool Submittable, Field[] Fields, Dictionary<string, string[]> Permissions, string? Id = null, bool Immutable = false);
 
 public sealed class Catalog
 {
@@ -25,6 +25,7 @@ public sealed class Catalog
         foreach (var d in Types.Values)
         {
             Identifier(d.Name);
+            if(d.Immutable && d.Submittable)throw new InvalidOperationException("Immutable records cannot have mutable submission state.");
             foreach (var grant in d.Permissions.Values.SelectMany(x => x))
                 if (!new[] { "read", "create", "write", "delete", "audit", "submit", "cancel" }.Contains(grant))
                     throw new InvalidOperationException("Unknown permission action: " + grant);
@@ -35,13 +36,13 @@ public sealed class Catalog
             {
                 Identifier(f.Name);
                 if (reserved.Contains(f.Name)) throw new InvalidOperationException("Reserved field: " + f.Name);
-                if (!new[] { "Text", "Integer", "Decimal", "Date", "Select", "Link", "Boolean", "Money", "Binary", "Uri" }.Contains(f.Type))
+                if (!new[] { "Text", "Integer", "Decimal", "Date", "Select", "Link", "Boolean", "Money", "Binary", "Uri", "Measurement" }.Contains(f.Type))
                     throw new InvalidOperationException("Unknown field type: " + f.Type);
                 FieldValues.ValidateDefinition(f);
                 if (f.Type == "Link" && (f.Target == null || !Types.ContainsKey(f.Target))) throw new InvalidOperationException("Invalid link target.");
                 if (f.Type == "Select" && (f.Options == null || f.Options.Length == 0)) throw new InvalidOperationException("Select requires options.");
             }
-            if (!d.Fields.Any(f => f.Name == d.TitleField && f.Type!="Binary")) throw new InvalidOperationException("Missing title field.");
+            if (!d.Fields.Any(f => f.Name == d.TitleField && f.Type is not ("Binary" or "Measurement"))) throw new InvalidOperationException("Missing title field.");
         }
         if (Types.Keys.Distinct(StringComparer.OrdinalIgnoreCase).Count() != Types.Count)
             throw new InvalidOperationException("Case-colliding DocTypes.");

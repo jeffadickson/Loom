@@ -22,6 +22,11 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
         return schema;
     }
     private static Document Required(IStoreSession session, string type, string id) => session.Get(type, id) ?? throw new LoomException(404, "Document not found.");
+    public Page Query(string type,Actor actor,DocumentQuery query)
+    {
+        var schema=Authorize(type,actor,"read");var validated=Queries.Validate(schema,query);
+        return store.Transaction(s=>s.Query(schema,validated));
+    }
     public Document Get(string type, string id, Actor actor)
     {
         Authorize(type, actor, "read");
@@ -32,7 +37,7 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
     {
         var schema = Authorize(type, actor, "read");
         sort ??= schema.TitleField;
-        if (!schema.Fields.Any(f => f.Name == sort && f.Type!="Binary")) throw new LoomException(400, "Invalid sort field.");
+        if (!schema.Fields.Any(f => f.Name == sort && f.Type is not ("Binary" or "Measurement"))) throw new LoomException(400, "Invalid sort field.");
         if (field != null && !schema.Fields.Any(f => f.Name == field)) throw new LoomException(400, "Invalid filter field.");
         if (skip < 0 || take < 1 || take > 200) throw new LoomException(400, "Page size must be 1–200 and skip nonnegative.");
         return store.Transaction(s =>
@@ -63,6 +68,7 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
     public Document Update(string type, string id, int version, JsonObject values, Actor actor)
     {
         var schema = Authorize(type, actor, "write");
+        if(schema.Immutable)throw new LoomException(409,"Immutable records require a new amendment record.");
         return store.Transaction(s =>
         {
             var old = Required(s, type, id);
@@ -88,7 +94,7 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
     }
     public void Delete(string type, string id, int version, Actor actor)
     {
-        Authorize(type, actor, "delete");
+        if(Authorize(type, actor, "delete").Immutable)throw new LoomException(409,"Immutable records cannot be deleted.");
         store.Transaction(s =>
         {
             var old = Required(s, type, id);
@@ -109,6 +115,7 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
         foreach (var key in input.Select(x => x.Key))
             if (!schema.Fields.Any(f => f.Name == key && !f.ReadOnly)) throw new LoomException(400, "Unknown or read-only field: " + key);
         var values = (JsonObject)input.DeepClone();
+        if(id==null)foreach(var f in schema.Fields.Where(f=>f.Default!=null && !values.ContainsKey(f.Name)))values[f.Name]=f.Default;
         foreach (var hook in hooks.Where(h => h.Type == schema.Name)) hook.BeforeSave(values);
         foreach (var f in schema.Fields)
         {
@@ -119,7 +126,7 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
                 if (f.Required) throw new LoomException(422, f.Label + " is required.");
                 values[f.Name] = null; continue;
             }
-            if (node is JsonArray or JsonObject) throw new LoomException(422, f.Label + " must be a scalar.");
+            if (f.Type!="Measurement" && (node is JsonArray or JsonObject)) throw new LoomException(422, f.Label + " must be a scalar.");
             if(f.Type=="Link")
             {
                 Authorize(f.Target!,actor,"read");

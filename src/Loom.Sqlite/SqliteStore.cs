@@ -14,6 +14,8 @@ public sealed partial class SqliteStore : IDocumentStore, IMigrationStore
     public SqliteStore(string connectionString)
     {
         connection = new(connectionString); connection.Open(); RegisterConversions();
+        connection.CreateCollation("loom_decimal",(a,b)=>decimal.Parse(a,System.Globalization.CultureInfo.InvariantCulture).CompareTo(decimal.Parse(b,System.Globalization.CultureInfo.InvariantCulture)));
+        connection.CreateCollation("loom_ordinal",StringComparer.Ordinal.Compare);
         using var cmd = connection.CreateCommand();
         cmd.CommandText = "PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;"; cmd.ExecuteNonQuery();
     }
@@ -52,6 +54,24 @@ public sealed partial class SqliteStore : IDocumentStore, IMigrationStore
             foreach (var (key, value) in args) c.Parameters.AddWithValue(key, value ?? DBNull.Value);
             return c;
         }
+        public Page Query(DocType schema,DocumentQuery query)
+        {
+            query=Queries.Validate(schema,query);var fields=schema.Fields.ToDictionary(f=>f.Id!);
+            string Column(Field f)=>Q(f.Name)+(f.Type is "Decimal" or "Money"?" COLLATE loom_decimal":f.Type is "Integer" or "Boolean"?"":" COLLATE loom_ordinal");
+            var clauses=new List<string>();var parameters=new List<(string,object?)>();
+            foreach(var filter in query.Filters!)
+            {
+                var field=fields[filter.FieldId];var column=Column(field);
+                if(filter.Operator==FilterOperator.IsNull){clauses.Add(column+" IS NULL");continue;}
+                var parameter="$p"+parameters.Count;parameters.Add((parameter,Value(field,filter.Value)));
+                clauses.Add(column+(filter.Operator switch{FilterOperator.Equal=>" = ",FilterOperator.GreaterThan=>" > ",_=>" < "})+parameter);
+            }
+            var where=clauses.Count==0?"":" WHERE "+string.Join(" AND ",clauses);
+            using var count=Command("SELECT COUNT(*) FROM "+Q(schema.Name)+where,parameters.ToArray());
+            int total=checked(Convert.ToInt32(count.ExecuteScalar()));
+            using var command=Command("SELECT * FROM "+Q(schema.Name)+where+" ORDER BY "+Column(fields[query.SortFieldId])+(query.Descending?" DESC":" ASC")+", id COLLATE loom_ordinal LIMIT $take OFFSET $skip",[..parameters,("$take",query.Take),("$skip",query.Skip)]);
+            using var reader=command.ExecuteReader();var rows=new List<Document>();while(reader.Read())rows.Add(Read(reader,schema));return new(total,rows);
+        }
         public Document? Get(string type, string id)
         {
             var schema = catalog.Get(type);
@@ -77,6 +97,7 @@ public sealed partial class SqliteStore : IDocumentStore, IMigrationStore
                 {
                     "Integer" => JsonValue.Create(r.GetInt64(i)),
                     "Boolean" => JsonValue.Create(r.GetInt64(i) != 0),
+                    "Measurement" => JsonNode.Parse(r.GetString(i)),
                     "Binary" => JsonValue.Create(Convert.ToBase64String(BlobCodec.Decode((byte[])r.GetValue(i),f.MaxBytes))),
                     "Decimal" or "Money" => JsonValue.Create(decimal.Parse(r.GetString(i), System.Globalization.CultureInfo.InvariantCulture)),
                     _ => JsonValue.Create(r.GetString(i))

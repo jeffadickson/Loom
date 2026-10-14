@@ -40,6 +40,7 @@ public sealed record Quantity
 }
 
 /// <summary>Standard uncertainty in the value's unit interval; null means unspecified.</summary>
+[System.Text.Json.Serialization.JsonConverter(typeof(MeasurementConverter))]
 public sealed record Measurement
 {
     public Quantity Value { get; }
