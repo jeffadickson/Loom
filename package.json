@@ -1,0 +1,11 @@
+{
+  "name": "loom-browser-verification",
+  "version": "0.0.0",
+  "private": true,
+  "engines": {"node": ">=22 <23"},
+  "scripts": {
+    "browser:install": "playwright install chromium",
+    "test:introduction": "node tools/test_introduction.cjs"
+  },
+  "devDependencies": {"playwright": "1.51.1"}
+}

@@ -1,0 +1,56 @@
+{
+  "sdkVersion": "8.0.426",
+  "nodeVersion": "22.15.0",
+  "dotnet": {
+    "linux-arm64": {
+      "url": "https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.426/dotnet-sdk-8.0.426-linux-arm64.tar.gz",
+      "sha512": "8a49694501bb67f35be0d345fec4ec660b7e311e6d31cde48e2699cc94cbd901d71dc5aef61a42bc35883e0175883cc2599f7f6ff4af3525381b7d7b8342bef5"
+    },
+    "linux-x64": {
+      "url": "https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.426/dotnet-sdk-8.0.426-linux-x64.tar.gz",
+      "sha512": "8141d01bdc53f604aed3bb661b604707a64209f8a947cd81bf95b4f518951593d77864069191f54ea5e84362a409da6b0f69074bf893b283d7e0cf93e2bf20a8"
+    },
+    "osx-x64": {
+      "url": "https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.426/dotnet-sdk-8.0.426-osx-x64.tar.gz",
+      "sha512": "44f5356cd8c96a937540547df6b71995636afe35827bc380478543cc7b7b3ca089679f3bee0498db3f6399bd9ee6b5829f3b452bcfc85d3c899714712ea3c5e3"
+    },
+    "osx-arm64": {
+      "url": "https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.426/dotnet-sdk-8.0.426-osx-arm64.tar.gz",
+      "sha512": "17cd408c92eb6ceedc06d41fa726c783b9be020c6ae5f3624ad3a0b2c26a78aa7d09f38338003163a72bb14d437731debf533c0451a5c6a05de3b1e37a3aa50a"
+    },
+    "win-arm64": {
+      "url": "https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.426/dotnet-sdk-8.0.426-win-arm64.zip",
+      "sha512": "1384efbcb158c12afbc949839f360b5556d90ad5a9a0edfb89e594f89b3c199d14bd45d7c8de48d6d464fa2ac2ff026546bf2dfb4275596d548c3219480ce5ca"
+    },
+    "win-x64": {
+      "url": "https://builds.dotnet.microsoft.com/dotnet/Sdk/8.0.426/dotnet-sdk-8.0.426-win-x64.zip",
+      "sha512": "10261657109f1c62126f106a9ac966739b025b5f6b4a9f88ab7c6e73cacce9aec771895daa3267b8da933a83c32ee91bf458dc6704e1ddcd9bcf0d5edd036abb"
+    }
+  },
+  "node": {
+    "linux-arm64": {
+      "url": "https://nodejs.org/dist/v22.15.0/node-v22.15.0-linux-arm64.tar.gz",
+      "sha256": "c3582722db988ed1eaefd590b877b86aaace65f68746726c1f8c79d26e5cc7de"
+    },
+    "linux-x64": {
+      "url": "https://nodejs.org/dist/v22.15.0/node-v22.15.0-linux-x64.tar.gz",
+      "sha256": "29d1c60c5b64ccdb0bc4e5495135e68e08a872e0ae91f45d9ec34fc135a17981"
+    },
+    "osx-x64": {
+      "url": "https://nodejs.org/dist/v22.15.0/node-v22.15.0-darwin-x64.tar.gz",
+      "sha256": "f7f42bee60d602783d3a842f0a02a2ecd9cb9d7f6f3088686c79295b0222facf"
+    },
+    "osx-arm64": {
+      "url": "https://nodejs.org/dist/v22.15.0/node-v22.15.0-darwin-arm64.tar.gz",
+      "sha256": "92eb58f54d172ed9dee320b8450f1390db629d4262c936d5c074b25a110fed02"
+    },
+    "win-arm64": {
+      "url": "https://nodejs.org/dist/v22.15.0/node-v22.15.0-win-arm64.zip",
+      "sha256": "737cd7046d96575c2d6cd36e0355afba54b79296b0f403ef4b3b1b5852b10ab6"
+    },
+    "win-x64": {
+      "url": "https://nodejs.org/dist/v22.15.0/node-v22.15.0-win-x64.zip",
+      "sha256": "06067d4f0d463f90ed803d5eca5b039a05dec5d70fc7b7cc254803a59bd0e27c"
+    }
+  }
+}

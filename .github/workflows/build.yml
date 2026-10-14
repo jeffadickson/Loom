@@ -6,34 +6,62 @@ permissions:
   contents: read
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      PYTHONUTF8: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
-      - name: Build web application
-        run: dotnet build src/Loom.Demo/Loom.Demo.csproj --configuration Release
-      - name: Run framework and SQLite checks
-        run: dotnet run --project tests/Loom.Tests --configuration Release -- .
-      - name: Run getting-started example
-        run: dotnet run --project examples/Loom.GettingStarted --configuration Release
-      - name: Build model generator
-        run: dotnet build src/Loom.ModelTool --configuration Release
-      - name: Compile generated models
-        run: dotnet build tests/Loom.Generated.Tests --configuration Release
-      - name: Run scientific quantity example
-        run: dotnet run --project examples/Loom.Science --configuration Release
+          global-json-file: global.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Locked build, unit tests and executable examples
+        run: dotnet msbuild build/Loom.proj -t:Test -p:Python=python
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-      - name: Test standalone and live introduction
-        env:
-          LOOM_CONFIGURATION: Release
-          NODE_PATH: /tmp/loom-browser/node_modules
-        run: |
-          python3 tools/build_introduction.py
-          git diff --exit-code -- Loom_Introduction.html
-          npm install --prefix /tmp/loom-browser playwright@1.51.1
-          /tmp/loom-browser/node_modules/.bin/playwright install --with-deps chromium
-          python3 tools/test_introduction.py
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install locked browser tooling
+        run: npm ci
+      - name: Install Chromium and system dependencies
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Verify generated introduction and browser behavior
+        run: dotnet msbuild build/Loom.proj -t:BrowserTest -p:Python=python
+      - name: Package framework-dependent demo
+        run: dotnet msbuild build/Loom.proj -t:Pack -p:Python=python
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: loom-${{ matrix.os }}
+          path: |
+            artifacts/test-results
+            artifacts/*.zip
+            artifacts/*.sha256
+  python-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.12.23'
+      - run: uv sync --locked --group print
+      - run: uv run --locked python -m compileall -q tools
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Provision isolated checksum-verified SDK and Node
+        run: python tools/dev.py setup --browser
+      - name: Diagnose installed local tools
+        run: python tools/dev.py doctor --browser

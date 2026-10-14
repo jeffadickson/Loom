@@ -3,6 +3,7 @@
     <LoomMetadataDirectory>$(MSBuildThisFileDirectory)Metadata</LoomMetadataDirectory>
     <LoomModelTool>$(MSBuildThisFileDirectory)../../src/Loom.ModelTool/bin/$(Configuration)/net8.0/Loom.ModelTool.dll</LoomModelTool>
   </PropertyGroup>
-  <ItemGroup><ProjectReference Include="../../src/Loom.Core/Loom.Core.csproj" /></ItemGroup>
+  <ItemGroup><ProjectReference Include="../../src/Loom.ModelTool/Loom.ModelTool.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../src/Loom.Core/Loom.Core.csproj" /></ItemGroup>
   <Import Project="../../build/Loom.Models.targets" />
 </Project>

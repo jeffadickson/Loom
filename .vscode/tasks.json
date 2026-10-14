@@ -1,0 +1,1 @@
+{"version":"2.0.0","tasks":[{"label":"build demo (Debug)","type":"process","command":"dotnet","args":["build","${workspaceFolder}/src/Loom.Demo/Loom.Demo.csproj","--configuration","Debug"],"problemMatcher":"$msCompile"},{"label":"verify Loom","type":"process","command":"dotnet","args":["msbuild","build/Loom.proj","-t:Test"],"problemMatcher":"$msCompile"}]}

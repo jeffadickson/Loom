@@ -1,6 +1,9 @@
 const {chromium}=require('playwright');
 const {pathToFileURL}=require('url');
 const path=require('path');
+const fs=require('fs');
+const screenshots=path.resolve(__dirname,'../artifacts/browser');
+fs.mkdirSync(screenshots,{recursive:true});
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox']});
  try{
@@ -18,7 +21,7 @@ const path=require('path');
   await page.locator('#input-Cost').fill('12.34');await page.locator('#role').selectOption('Viewer');await page.locator('#save').click();await page.locator('#message').filter({hasText:'403'}).waitFor();
   await page.locator('#outcome').selectOption('Fail');await page.locator('#summary').filter({hasText:'0 matching'}).waitFor();
   await page.locator('#role').selectOption('Admin');await page.locator('#outcome').selectOption('');await page.locator('#summary').filter({hasText:'3 matching'}).waitFor();
-  await page.screenshot({path:'/tmp/loom-intro-'+mode+'.png',fullPage:true});
+  await page.screenshot({path:path.join(screenshots,'introduction-'+mode+'.png'),fullPage:true});
   await page.setViewportSize({width:390,height:844});if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Mobile page overflows');
   if(errors.length)throw Error(errors.join('\n'));await page.close();console.log('PASS introduction '+mode+': exact numbers, safe text, audit, scale refusal, authorization, filters and mobile layout');
  }

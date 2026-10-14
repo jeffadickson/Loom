@@ -2,6 +2,20 @@
 
 Working name; independent project. Define records with C# attributes or JSON and obtain a working equipment/work-order application: forms, lists, persistence, REST endpoints, validation, permissions, document states, reports and history. C# supplies custom behavior. The prototype is not a compatible port of Frappe and does not execute Python applications.
 
+## Build and development
+
+See [development setup](docs/DEVELOPMENT.md) for checksum-verified local tool setup,
+locked dependencies, Windows/macOS/Linux verification, debugging and release ZIPs.
+From a clone with Python 3.11.8+ installed:
+
+```sh
+python tools/dev.py setup
+python tools/dev.py test
+python tools/dev.py run
+```
+
+Add `--browser` to setup for the browser tooling. Database tests additionally need Docker.
+
 ## Browser demos
 
 Start with [the interactive introduction](Loom_Introduction.html). Download it for a self-contained browser simulation, or run the memory demo and open `/introduction.html` for the same walkthrough using the real C# API. It includes model attributes, a generated form, exact-money validation, role checks, query paging and audit history.

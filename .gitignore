@@ -3,3 +3,8 @@
 **/data/
 *.db*
 artifacts/
+.tools/
+node_modules/
+.venv/
+__pycache__/
+TestResults/

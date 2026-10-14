@@ -1,0 +1,11 @@
+[project]
+name = "loom-verification-tools"
+version = "0.1.0"
+requires-python = ">=3.11.8"
+dependencies = []
+
+[dependency-groups]
+print = ["pymupdf==1.25.5"]
+
+[tool.uv]
+package = false

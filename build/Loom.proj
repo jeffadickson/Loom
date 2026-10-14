@@ -1,0 +1,35 @@
+<Project DefaultTargets="Test">
+  <PropertyGroup>
+    <Root>$(MSBuildThisFileDirectory)..</Root>
+    <Configuration Condition="'$(Configuration)' == ''">Release</Configuration>
+    <DotNet Condition="'$(DotNet)' == ''">dotnet</DotNet>
+    <Python Condition="'$(Python)' == ''">python3</Python>
+    <Version Condition="'$(Version)' == ''">0.12.0-alpha.1</Version>
+  </PropertyGroup>
+  <Target Name="Restore">
+    <MSBuild Projects="$(Root)/Loom.sln" Targets="Restore" Properties="Configuration=$(Configuration);RestoreLockedMode=true" />
+  </Target>
+  <Target Name="Build" DependsOnTargets="Restore">
+    <MSBuild Projects="$(Root)/Loom.sln" Targets="Build" Properties="Configuration=$(Configuration);LoomDotNet=$(DotNet)" />
+  </Target>
+  <Target Name="Test" DependsOnTargets="Build">
+    <Exec WorkingDirectory="$(Root)" Command="&quot;$(DotNet)&quot; tests/Loom.Tests/bin/$(Configuration)/net8.0/Loom.Tests.dll ." />
+    <Exec WorkingDirectory="$(Root)" Command="&quot;$(DotNet)&quot; test tests/Loom.UnitTests --configuration $(Configuration) --no-build --no-restore --logger trx --results-directory artifacts/test-results" />
+    <Exec WorkingDirectory="$(Root)" Command="&quot;$(DotNet)&quot; examples/Loom.GettingStarted/bin/$(Configuration)/net8.0/Loom.GettingStarted.dll" />
+    <Exec WorkingDirectory="$(Root)" Command="&quot;$(DotNet)&quot; examples/Loom.Science/bin/$(Configuration)/net8.0/Loom.Science.dll" />
+  </Target>
+  <Target Name="BrowserTest" DependsOnTargets="Build">
+    <Exec WorkingDirectory="$(Root)" Command="&quot;$(Python)&quot; tools/build_introduction.py" />
+    <Exec WorkingDirectory="$(Root)" Command="git diff --exit-code -- Loom_Introduction.html" />
+    <Exec WorkingDirectory="$(Root)" EnvironmentVariables="LOOM_CONFIGURATION=$(Configuration)" Command="&quot;$(Python)&quot; tools/test_introduction.py &quot;$(DotNet)&quot;" />
+  </Target>
+  <Target Name="DatabaseTest" DependsOnTargets="Build">
+    <Exec WorkingDirectory="$(Root)" Command="&quot;$(DotNet)&quot; test tests/Loom.ContainerTests --configuration $(Configuration) --no-build --no-restore --logger trx --results-directory artifacts/database-results" />
+  </Target>
+  <Target Name="Pack" DependsOnTargets="Build">
+    <RemoveDir Directories="$(Root)/artifacts/publish" />
+    <MSBuild Projects="$(Root)/src/Loom.Demo/Loom.Demo.csproj" Targets="Publish" Properties="Configuration=$(Configuration);PublishDir=$(MSBuildThisFileDirectory)../artifacts/publish/;UseAppHost=false;Version=$(Version)" />
+    <Exec WorkingDirectory="$(Root)" Command="&quot;$(Python)&quot; tools/package_release.py --version $(Version)" />
+    <Exec WorkingDirectory="$(Root)" Command="&quot;$(Python)&quot; tools/test_release.py artifacts/Loom-$(Version).zip &quot;$(DotNet)&quot;" />
+  </Target>
+</Project>
