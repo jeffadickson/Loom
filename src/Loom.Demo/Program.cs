@@ -14,6 +14,15 @@ using Npgsql;
 using Microsoft.Data.SqlClient;
 using Loom.Demo;
 
+// Recovery is an offline operator operation, before opening the ordinary demo database.
+if(args.Length==4 && args[0] is "--tenant-backup" or "--tenant-restore")
+{
+    var workspace=new TenantWorkspace(args[1],[args[2]],(_,_)=>null);
+    if(args[0]=="--tenant-backup")workspace.Backup(args[2],args[3]);
+    else workspace.Restore(args[2],args[3]);
+    Console.WriteLine(args[0]=="--tenant-backup"?"Tenant backup verified and created.":"Tenant backup verified and restored.");
+    return;
+}
 var builder = WebApplication.CreateBuilder(args);
 var root = builder.Environment.ContentRootPath;
 if (args.Contains("--hash-password"))
@@ -101,6 +110,7 @@ foreach (var hook in hooks)
     if (hook.RequiredFields.Any(name => !catalog.Get(hook.Type).Fields.Any(f => f.Name == name)))
         throw new InvalidOperationException("Stored model is incompatible with C# hook dependencies.");
 IDocumentAccessPolicy? access = accountsEnabled ? new LaboratoryAccessPolicy() : null;
+var tenantWorkspace=TenantEndpoints.Configure(builder,catalog,hooks,access,accountsEnabled);
 var service = new DocumentService(catalog, store, hooks, access);
 var admin = new Actor("demo-admin", "Admin");
 if (storedCatalog == null && service.List("Asset", admin).Total == 0)
@@ -178,6 +188,7 @@ else
     app.MapGet("/login.html",()=>Results.Redirect("/Identity/Account/Login"));
 }
 if(identityEnabled) app.Use(async(c,next)=> { if(c.Request.Path=="/login.html"){c.Response.Redirect("/Identity/Account/Login");return;}await next(); });
+TenantEndpoints.Map(app,tenantWorkspace);
 app.UseDefaultFiles(); app.UseStaticFiles();
 app.MapGet("/api/meta", (HttpContext c) =>
 {

@@ -16,6 +16,10 @@ def request(opener,path,body=None,method=None):
         with opener.open(req) as r:return r.status,r.read()
     except urllib.error.HTTPError as e:return e.code,e.read()
 with tempfile.TemporaryDirectory() as tmp:
+    env.update(Tenancy__Enabled='true',Tenancy__DataDirectory=str(Path(tmp)/'tenants'),Tenancy__Tenants__0='north',Tenancy__Tenants__1='south',
+        Tenancy__Memberships__0__UserId='analyst',Tenancy__Memberships__0__TenantId='north',Tenancy__Memberships__0__Role='Admin',
+        Tenancy__Memberships__1__UserId='other',Tenancy__Memberships__1__TenantId='south',Tenancy__Memberships__1__Role='Admin')
+
     with open(Path(tmp)/'host.log','w') as log:
         host=subprocess.Popen([dotnet,'bin/'+os.environ.get('LOOM_CONFIGURATION','Release')+'/net8.0/Loom.Demo.dll','--memory-demo'],cwd=root/'src/Loom.Demo',env=env,stdout=log,stderr=log)
         try:
@@ -42,5 +46,25 @@ with tempfile.TemporaryDirectory() as tmp:
             assert json.loads(request(opener,'/api/documents/LabRun')[1])['total']==0
             assert request(opener,'/api/documents/LabRun/'+run['id'])[0]==404
             assert request(opener,'/api/laboratory/runs/'+run['id']+'/print')[0]==404
+            assert request(opener,'/api/tenants/north/documents/Asset')[0]==403
+            assert json.loads(request(opener,'/api/tenants/south/documents/Asset')[1])['total']==0
+            status,body=request(opener,'/api/tenants/south/documents/Asset',{'name':'South probe','tag':'S-1','category':'Electronics','location':'South lab','active':True})
+            assert status==200,(status,body); south_asset=json.loads(body)
+            assert request(opener,'/auth/logout',{},'POST')[0]==204
+            assert request(opener,'/auth/login',{'id':'analyst','password':password})[0]==200
+            assert json.loads(request(opener,'/api/tenants/north/documents/Asset')[1])['total']==0
+            assert request(opener,'/api/tenants/north/documents/Asset/'+south_asset['id'])[0]==404
+            assert request(opener,'/api/tenants/south/documents/Asset')[0]==403
+            assert request(opener,'/auth/logout',{},'POST')[0]==204
+            assert request(opener,'/auth/login',{'id':'administrator','password':password})[0]==200
+            assert request(opener,'/api/tenants/north/documents/Asset')[0]==403
+            print('PASS tenant HTTP membership, role-header spoof rejection, empty counts and cross-tenant IDs')
             print('PASS cookie authentication, logout, spoof rejection, row scopes, field redaction and report authorization')
         finally:host.terminate();host.wait(timeout=10)
+
+    archive=Path(tmp)/'south.zip'
+    demo=root/'src/Loom.Demo/bin'/os.environ.get('LOOM_CONFIGURATION','Release')/'net8.0/Loom.Demo.dll'
+    subprocess.run([dotnet,str(demo),'--tenant-backup',str(Path(tmp)/'tenants'),'south',str(archive)],check=True)
+    subprocess.run([dotnet,str(demo),'--tenant-restore',str(Path(tmp)/'recovered'),'south',str(archive)],check=True)
+    assert (Path(tmp)/'recovered/south/documents.db').is_file()
+    print('PASS operator backup and clean-instance restore commands')

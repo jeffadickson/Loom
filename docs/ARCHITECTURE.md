@@ -193,3 +193,32 @@ The additive EmailOutbox EF migration preserves existing users and audit records
 Delivery diagnostics expose only status, attempt count, timestamps and fixed failure
 codes. Cancellation requires Admin and antiforgery validation and refuses an active
 lease. The general document outbox and scheduler remain separate framework work.
+
+## Tenant isolation and recovery
+
+The first tenant architecture is **database per tenant**. This avoids relying on every
+query and future report remembering a row discriminator. TenantWorkspace owns routing;
+TenantSession is an authorized capability with a private DocumentService/store. The host
+supplies a trusted membership resolver keyed by stable user ID and tenant slug. Sessions
+refresh membership and role at each operation, while existing row/field access policies
+apply within the selected database. There is no global-Admin bypass.
+
+Tenant identifiers are restricted to lowercase path-safe slugs and an explicit allowlist.
+Provisioned databases carry an immutable physical tenant binding. Existing unbound
+single-workspace databases are not silently adopted. Each host checks its expected catalog
+at provisioning; mismatches require reviewed migration. Tenant backups contain the complete
+document database, including report layouts, audit and migration history.
+
+Recovery uses SQLite online backup to a private staging directory, hashes the checkpointed
+snapshot and packages it with a versioned manifest. Restore permits exactly two known ZIP
+entries, bounds decompression, verifies tenant/checksum/schema/integrity, and moves the
+validated database into a new destination without replacement. Backup files are sensitive;
+checksums are not signatures. Restore is an offline operator command, never an ordinary
+tenant HTTP action. A recovery drill restores to a separate root and runs representative
+authorized reads before switching hosts.
+
+The demo's original /api/documents workspace remains separate from /api/tenants/{tenant}.
+Do not put tenant-owned data in the original workspace. Production applications should
+expose only tenant routes when all their data is tenant-owned. Shared Identity accounts,
+email outbox and Data Protection keys require a separate coordinated backup policy.
+There is no cross-provider transfer, identity backup or automatic fleet migration claim.

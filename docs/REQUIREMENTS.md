@@ -249,3 +249,24 @@ authenticating an account does not by itself grant access to another tenant.
 
 This increment implements an Identity-specific email queue. General document outbox
 events, durable workflow scheduling and arbitrary application jobs remain open in #24.
+
+## Tenant isolation and recovery — TEN-01 / REC-01
+
+- Opt-in tenancy requires authenticated stable user IDs and explicit, server-owned
+  tenant memberships/roles. Global Admin grants no implicit tenant access.
+- Each tenant owns a separate SQLite database containing documents, links, uniqueness
+  constraints, catalog, migration receipts, audit and report layouts. Physical files
+  carry a tenant binding; routing an existing file to another tenant fails closed.
+- Tenant sessions expose authorized operations and recheck membership/role on every
+  operation. No request-supplied actor, role or path can select storage.
+- Provisioning, schema upgrades and recovery are operator tasks. Unknown tenants,
+  missing memberships, path traversal and unprovisioned databases are rejected.
+- Online backups use SQLite's snapshot API, including committed WAL contents. Archives
+  include format, tenant ID, schema hash and database checksum.
+- Restore validates entry names, size limits, checksum, tenant binding, schema and SQLite
+  integrity in staging, then publishes only to an absent destination. Never overwrite
+  a live database. Test exact money, compressed binary, links, audit and layouts after restore.
+- Hashes detect corruption, not malicious alteration. Archives are sensitive and unsigned.
+  Identity/accounts/Data Protection keys are outside a document-tenant backup.
+- Initial implementation is database-per-tenant SQLite. PostgreSQL/SQL Server recovery,
+  provider transfer, dynamic membership administration and cross-tenant reporting remain open.
