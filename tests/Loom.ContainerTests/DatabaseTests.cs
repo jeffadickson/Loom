@@ -48,6 +48,59 @@ public sealed class SqlServerFixture:IAsyncLifetime,IDatabaseFixture
 public abstract class ServerRepositoryContract(IDatabaseFixture fixture):RepositoryContract
 {
     protected override IDocumentStore Open()=>new ServerDocumentStore(fixture.CreateDatabase(),fixture.Engine);
+    [Fact] public void Numeric_queries_match_reference_order_filters_nulls_and_exact_money()
+    {
+        using var store=Open();var service=Service(store);var model=Model();var schema=model.Get("Reading");
+        var values=new string?[]{null,"-2.50","0","2.00","2.00","12345678901234567.89"};
+        var docs=values.Select((value,index)=>service.Create("Reading",new(){["Name"]="row"+index,["Cost"]=value},Admin)).ToArray();
+        var field=schema.Fields.Single(f=>f.Name=="Cost").Id!;
+        var filters=new FieldFilter[][]{[],[new(field,FilterOperator.Equal,System.Text.Json.Nodes.JsonValue.Create("2.0"))],
+            [new(field,FilterOperator.GreaterThan,System.Text.Json.Nodes.JsonValue.Create("0"))],
+            [new(field,FilterOperator.LessThan,System.Text.Json.Nodes.JsonValue.Create("12345678901234567.89"))],
+            [new(field,FilterOperator.IsNull)]};
+        foreach(var descending in new[]{false,true})foreach(var filter in filters)foreach(var skip in new[]{0,1,7})
+        {
+            var query=new DocumentQuery(field,descending,skip,2,filter);
+            var expected=Queries.Execute(docs,schema,query);var actual=store.Transaction(session=>session.Query(schema,query));
+            Assert.Equal(expected.Total,actual.Total);Assert.Equal(expected.Items.Select(d=>d.Id),actual.Items.Select(d=>d.Id));
+        }
+    }
+    [Fact] public void Integer_extremes_and_fixed_decimal_scale_match_reference_queries()
+    {
+        var model=new Catalog([new("Numeric","Numeric",1,"Sequence",false,
+            [new("Sequence","Sequence","Integer"),new("Exact","Exact","Decimal",Precision:28,Scale:20)],
+            new(){["Admin"]=["read","create"]})]);
+        using var store=Open();store.Migrate(model);var service=new DocumentService(model,store,[]);
+        var docs=new[]{
+            service.Create("Numeric",new(){["Sequence"]=long.MinValue,["Exact"]="-0.00000000000000000001"},Admin),
+            service.Create("Numeric",new(){["Sequence"]=0,["Exact"]="0"},Admin),
+            service.Create("Numeric",new(){["Sequence"]=long.MaxValue,["Exact"]="99999999.12345678901234567890"},Admin)};
+        var schema=model.Get("Numeric");
+        foreach(var field in schema.Fields)foreach(var descending in new[]{false,true})
+        {
+            var query=new DocumentQuery(field.Id!,descending,Filters:[new(field.Id!,FilterOperator.GreaterThan,System.Text.Json.Nodes.JsonValue.Create("0"))]);
+            var expected=Queries.Execute(docs,schema,query);var actual=store.Transaction(s=>s.Query(schema,query));
+            Assert.Equal(expected.Total,actual.Total);Assert.Equal(expected.Items.Select(d=>d.Id),actual.Items.Select(d=>d.Id));
+        }
+    }
+    [Fact] public void Numeric_paging_reads_beyond_the_legacy_scan_limit()
+    {
+        var connection=fixture.CreateDatabase();using var store=new ServerDocumentStore(connection,fixture.Engine);var service=Service(store);
+        var template=service.Create("Reading",new(){["Name"]="template",["Cost"]="123.45"},Admin);
+        using(var command=connection.CreateCommand())
+        {
+            var parameter=command.CreateParameter();parameter.ParameterName="@body";
+            parameter.Value=JsonSerializer.Serialize(template with{Id="DOCUMENT_ID"},Catalog.Json);command.Parameters.Add(parameter);
+            command.CommandText=fixture.Engine==ServerEngine.PostgreSql?
+                "INSERT INTO loom_documents SELECT 'Reading',lpad(n::text,32,'0'),1,replace(@body,'DOCUMENT_ID',lpad(n::text,32,'0')) FROM generate_series(1,10005) n":
+                "WITH numbers AS (SELECT 1 n UNION ALL SELECT n+1 FROM numbers WHERE n<10005) INSERT INTO loom_documents SELECT 'Reading',RIGHT(REPLICATE('0',32)+CAST(n AS varchar(32)),32),1,REPLACE(@body,'DOCUMENT_ID',RIGHT(REPLICATE('0',32)+CAST(n AS varchar(32)),32)) FROM numbers OPTION (MAXRECURSION 0)";
+            Assert.Equal(10005,command.ExecuteNonQuery());
+        }
+        var schema=Model().Get("Reading");var field=schema.Fields.Single(f=>f.Name=="Cost").Id!;
+        var page=store.Transaction(s=>s.Query(schema,new(field,Skip:10000,Take:5)));
+        Assert.Equal(10006,page.Total);Assert.Equal(5,page.Items.Count);
+        Assert.Equal(Enumerable.Range(10001,5).Select(n=>n.ToString("D32")),page.Items.Select(d=>d.Id));
+    }
     [Fact] public void Existing_pre_EF_tables_and_payloads_remain_readable_and_writable()
     {
         using var memory=new MemoryStore();var original=Service(memory);

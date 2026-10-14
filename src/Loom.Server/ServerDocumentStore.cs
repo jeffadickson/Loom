@@ -106,6 +106,11 @@ public sealed class ServerDocumentStore : IDocumentStore
             Type(type);var json=db.Documents.AsNoTracking().Where(d=>d.Kind==type && d.Id==id).Select(d=>d.Body).SingleOrDefault();
             return json==null?null:JsonSerializer.Deserialize<Document>(json,Catalog.Json);
         }
+        public Page Query(DocType schema,DocumentQuery query)
+        {
+            var accepted=catalog.Get(schema.Name);query=Queries.Validate(accepted,query);
+            return ServerQueries.TryExecute(db,accepted,query)??Queries.Execute(List(accepted.Name),accepted,query);
+        }
         public IReadOnlyList<Document> List(string type)
         {
             Type(type);var rows=db.Documents.AsNoTracking().Where(d=>d.Kind==type).OrderBy(d=>d.Id).Select(d=>d.Body).Take(10001).ToArray();

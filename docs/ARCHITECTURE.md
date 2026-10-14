@@ -100,11 +100,22 @@ Existing server databases keep their table names, columns and JSON representatio
 Bootstrap DDL is retained deliberately: `EnsureCreated` is not an adoption or
 migration mechanism for an existing database. Application catalog changes still
 fail closed until explicit server schema migration support exists. EF does not
-currently map each dynamic application field to a relational column: field filters
-still use the bounded document scan, and provider-side field queries/indexes remain
-open work. SQLite retains its existing stable-field-ID migration and query engine.
+currently map each dynamic application field to a relational column: numeric-only queries now use parameterized database-side filtering, sorting,
+counts and paging. Supported types are Integer, Money and fixed-precision Decimal;
+PostgreSQL also supports unrestricted Decimal. Search, text sorts/filters and
+unrestricted Decimal on SQL Server retain the bounded reference scan to preserve
+comparison semantics. Indexes and the remaining query shapes are open work. SQLite retains its existing stable-field-ID migration and query engine.
 Do not run two independent migration engines against the same schema.
 
 Testcontainers checks both engines against the shared repository contract and
 additional tests for legacy table adoption, direct stale writes/deletes, recovery
 after a failed insert, read-your-writes, concurrent connections and schema drift.
+
+
+Numeric server queries extract JSON values using provider-specific SQL through
+EF Core `FromSqlRaw`. All field paths, values, document kinds and page bounds are
+parameters; only validated type definitions and fixed SQL operators form SQL text.
+Explicit null ordering and ID tie-breaking match the in-memory implementation.
+Count and page execute inside the same serializable store transaction. This removes
+the 10,000-document application scan cap for supported query shapes, but JSON
+extraction can still scan the database table; this is not a claim of indexed access.
