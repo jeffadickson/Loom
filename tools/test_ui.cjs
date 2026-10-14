@@ -1,0 +1,35 @@
+// Run with Playwright installed: node tools/test_ui.cjs [base URL or file:// URL]
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+(async()=>{
+ const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox']});
+ const page=await browser.newPage({bypassCSP:true,viewport:{width:1440,height:1000}});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const url=process.argv[2]||'http://127.0.0.1:5080';
+ await page.goto(url);await page.waitForFunction(()=>document.querySelector('#count').textContent!=='—');
+ assert.equal(await page.locator('#error').isVisible(),false);
+ console.log('PASS UI: initial metadata-driven table');
+ const tag='UI-'+Date.now();
+ await page.locator('#create').click();await page.locator('#editor').waitFor({state:'visible'});
+ await page.locator('[name=name]').fill('UI test equipment');await page.locator('[name=tag]').fill(tag);await page.locator('[name=category]').selectOption('Electronics');await page.locator('[name=location]').fill('UI lab');await page.locator('[name=active]').selectOption('true');
+ await page.locator('#save').click();await page.locator('#editor').waitFor({state:'hidden'});
+ await page.getByRole('button',{name:'Work orders',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#title').textContent==='Work orders');
+ await page.locator('#create').click();await page.locator('[name=asset] option').filter({hasText:'UI test equipment'}).first().waitFor({state:'attached'});
+ await page.locator('[name=title]').fill('UI test calibration');const choice=await page.locator('[name=asset] option').filter({hasText:'UI test equipment'}).last().getAttribute('value');await page.locator('[name=asset]').selectOption(choice);
+ await page.locator('[name=priority]').selectOption('High');await page.locator('[name=due]').fill('2026-11-15');await page.locator('[name=hours]').fill('2.5');await page.locator('[name=rate]').fill('120');await page.locator('#save').click();await page.locator('#editor').waitFor({state:'hidden'});
+ await page.getByRole('button',{name:'UI test calibration',exact:true}).last().click();await page.locator('#editor').waitFor({state:'visible'});assert.equal(await page.locator('[name=estimate]').inputValue(),'300');
+ console.log('PASS UI: linked create and calculated estimate');
+ await page.locator('[name=hours]').fill('4');await page.locator('#save').click();await page.locator('#editor').waitFor({state:'hidden'});await page.getByRole('button',{name:'UI test calibration',exact:true}).last().click();await page.locator('#editor').waitFor({state:'visible'});assert.equal(await page.locator('[name=estimate]').inputValue(),'480');
+ await page.waitForFunction(()=>document.querySelectorAll('#history details').length===2);console.log('PASS UI: edit and before/after history');
+ page.on('dialog',d=>d.accept());await page.locator('#actions').getByRole('button',{name:'Submit',exact:true}).click();await page.locator('#editor').waitFor({state:'hidden'});await page.getByRole('button',{name:'UI test calibration',exact:true}).last().click();await page.waitForFunction(()=>document.querySelector('#recordState').textContent.startsWith('Submitted'));
+ assert.equal(await page.locator('#save').isVisible(),false);assert.equal(await page.locator('[name=hours]').isDisabled(),true);console.log('PASS UI: submitted document locked');await page.locator('#close').click();
+ await page.locator('#role').selectOption('Viewer');await page.waitForFunction(()=>document.querySelector('#create').hidden);console.log('PASS UI: viewer actions hidden');
+ const denied=await page.evaluate(async()=>{const r=await fetch('/api/documents/Asset',{method:'POST',headers:{'Content-Type':'application/json','X-Loom-Demo':'local','X-Demo-Role':'Viewer'},body:JSON.stringify({name:'forbidden'})});return r.status});assert.equal(denied,403);console.log('PASS UI: direct viewer write rejected');
+ await page.locator('#reportTab').click();await page.locator('th').filter({hasText:'Estimate ($)'}).waitFor();console.log('PASS UI: report columns');
+ const downloadPromise=page.waitForEvent('download');await page.locator('#export').click();const download=await downloadPromise;assert.equal(download.suggestedFilename(),'WorkOrder.csv');console.log('PASS UI: CSV download');
+ await page.locator('#modelTab').click();await page.locator('#content pre').waitFor();assert.match(await page.locator('#content').innerText(),/readOnly/);console.log('PASS UI: metadata inspector');
+ await page.locator('#recordsTab').click();await page.screenshot({path:'/tmp/loom-ui-desktop.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});await page.screenshot({path:'/tmp/loom-ui-mobile.png',fullPage:true});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);console.log('PASS UI: mobile viewport has no page overflow');
+ assert.deepEqual(errors,[]);console.log('PASS UI: no JavaScript runtime errors');
+ await browser.close();
+})().catch(e=>{console.error(e);process.exit(1)});

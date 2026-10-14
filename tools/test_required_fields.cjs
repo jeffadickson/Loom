@@ -1,0 +1,24 @@
+const {chromium}=require('playwright'),assert=require('node:assert/strict');
+(async()=>{
+ const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox']});
+ const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+ page.on('pageerror',e=>errors.push(e.message));const headers={'X-Loom-Demo':'local','X-Demo-Role':'Admin'};
+ const get=async path=>(await page.request.get('http://127.0.0.1:5080/api/'+path,{headers})).json();
+ await page.goto('http://127.0.0.1:5080');await page.locator('#design').click();await page.locator('#addModelField').click();
+ await page.locator('#newFields .field-name').fill('site');await page.locator('#newFields .field-label').fill('Site');
+ await page.locator('#previewMigration').click();await page.locator('#migrationPreview').waitFor({state:'visible'});await page.locator('#applyMigration').click();await page.locator('#schemaEditor').waitFor({state:'hidden'});
+ const existing=(await get('documents/Asset')).items[0];existing.values.site='Annex';
+ const updated=await page.request.put('http://127.0.0.1:5080/api/documents/Asset/'+existing.id,{headers,data:{version:existing.version,values:existing.values}});assert.equal(updated.status(),200);
+ await page.locator('#design').click();await page.getByLabel('Make site required',{exact:true}).check();
+ await page.locator('#previewMigration').click();await page.locator('#designerError').waitFor({state:'visible'});assert.match(await page.locator('#designerError').innerText(),/2 missing values/);
+ await page.getByLabel('Backfill for site',{exact:true}).fill('Main laboratory');await page.locator('#previewMigration').click();await page.locator('#migrationPreview').waitFor({state:'visible'});
+ assert.match(await page.locator('#migrationChanges').innerText(),/2 missing values/);
+ assert.equal((await get('documents/Asset')).items.filter(d=>d.values.site===null).length,2);
+ await page.locator('#applyMigration').click();await page.locator('#schemaEditor').waitFor({state:'hidden'});
+ const rows=(await get('documents/Asset')).items;assert.equal(rows.find(d=>d.id===existing.id).values.site,'Annex');assert.equal(rows.filter(d=>d.values.site==='Main laboratory').length,2);
+ console.log('PASS required UI: preflight counts nulls; apply preserves populated site and fills only two missing sites');
+ await page.reload();await page.locator('#design').click();assert.equal(await page.getByLabel('Make site required',{exact:true}).count(),0);
+ const schema=await get('meta');assert.equal(schema.types.find(t=>t.name==='Asset').fields.find(f=>f.name==='site').required,true);
+ const receipts=await get('designer/history');assert.equal(receipts.length,2);assert.ok(receipts[1].changes.some(c=>c.kind==='RequireField'));
+ assert.deepEqual(errors,[]);console.log('PASS required UI: required state and migration history survive reload; no runtime errors');await browser.close();
+})().catch(e=>{console.error(e);process.exit(1)});

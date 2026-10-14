@@ -1,0 +1,31 @@
+PASS API: missing demo header denied
+PASS API: unknown role denied
+PASS API: metadata endpoint
+PASS API: create returns 201
+PASS API: read by viewer
+PASS API: write by viewer denied
+PASS API: duplicate reports conflict
+PASS API: HTTP concurrency guard
+PASS API: CSV formula neutralization
+PASS API: invalid sorting field
+PASS API: page bound
+PASS API: unknown model
+PASS API: required version binding
+PASS API: delete returns 204
+PASS API: deleted document is absent
+PASS API: deleted record history retained
+16 HTTP checks passed.
+PASS designer UI: field rename and optional addition produce a reviewable plan
+PASS designer UI: apply updates generated list while retaining existing values
+PASS designer UI: new field saves and survives reload
+PASS designer UI: migration history visible
+PASS designer UI: accepted model export
+PASS designer UI: editor hidden for viewer
+PASS designer UI: no JavaScript errors
+Reviewed model applied.
+PASS report API: persisted definition resolves readable columns and populated values
+PASS restart: accepted model and populated fields survive full host restart
+PASS restart: linked work orders and migration ledger survive
+PASS export: accepted JSON preserves permanent model and field IDs
+PASS report API: unchanged saved report survives designer rename and host restart
+PASS CLI: preview, wrong-plan refusal and reviewed apply against existing database

@@ -1,0 +1,6 @@
+Before: Multimeter = (missing), Oscilloscope = Annex
+PLAN: Make Site required; 1 missing values. Fill only nulls with "Main laboratory"; preserve existing values.
+PLAN: Model version 1 → 2. Title/display metadata refreshed.
+After: Multimeter = Main laboratory, Oscilloscope = Annex
+Expected validation: Site is required.
+PASS: 3 instruments; existing values preserved; missing site filled; future site required.

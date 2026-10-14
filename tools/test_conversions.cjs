@@ -1,0 +1,23 @@
+const {chromium}=require('playwright'),assert=require('node:assert/strict');
+(async()=>{
+ const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox']});
+ const page=await browser.newPage({viewport:{width:1440,height:1100}}),errors=[];
+ page.on('pageerror',e=>errors.push(e.message));const headers={'X-Loom-Demo':'local','X-Demo-Role':'Admin'};
+ const get=async path=>(await page.request.get('http://127.0.0.1:5080/api/'+path,{headers})).json();
+ const update=async(id,value)=>{const d=await get('documents/Asset/'+id);d.values.reading=value;const response=await page.request.put('http://127.0.0.1:5080/api/documents/Asset/'+id,{headers,data:{version:d.version,values:d.values}});assert.equal(response.status(),200)};
+ const apply=async()=>{await page.locator('#previewMigration').click();await page.locator('#migrationPreview').waitFor({state:'visible'});await page.locator('#applyMigration').click();await page.locator('#schemaEditor').waitFor({state:'hidden'})};
+ await page.goto('http://127.0.0.1:5080');await page.locator('#design').click();await page.locator('#schemaEditor').waitFor({state:'visible'});await page.locator('#addModelField').click();
+ await page.locator('#newFields .field-name').fill('reading');await page.locator('#newFields .field-label').fill('Reading');await page.getByLabel('New field type',{exact:true}).selectOption('Integer');await apply();
+ const id=(await get('documents/Asset')).items[0].id;await update(id,42);
+ await page.locator('#design').click();await page.locator('#schemaEditor').waitFor({state:'visible'});await page.getByLabel('Type for reading',{exact:true}).selectOption('Decimal');
+ await page.locator('#previewMigration').click();await page.locator('#migrationPreview').waitFor({state:'visible'});assert.match(await page.locator('#migrationChanges').innerText(),/Integer → Decimal/);
+ await page.locator('#applyMigration').click();await page.locator('#schemaEditor').waitFor({state:'hidden'});
+ assert.equal((await get('documents/Asset/'+id)).values.reading,'42');console.log('PASS conversion UI: Integer to Decimal preview and apply preserve value');
+ await update(id,42.5);await page.locator('#design').click();await page.locator('#schemaEditor').waitFor({state:'visible'});await page.getByLabel('Type for reading',{exact:true}).selectOption('Integer');
+ await page.locator('#previewMigration').click();await page.locator('#designerError').waitFor({state:'visible'});assert.match(await page.locator('#designerError').innerText(),/Fractional/);assert.equal((await get('documents/Asset/'+id)).values.reading,'42.5');
+ console.log('PASS conversion UI: fractional narrowing rejected without modifying data');
+ await update(id,42);await page.locator('#modelFields tr[data-field="reading"] .field-name').fill('measurement');await page.getByLabel('Make reading required',{exact:true}).check();await page.getByLabel('Backfill for reading',{exact:true}).fill('99');await apply();
+ const rows=(await get('documents/Asset')).items;assert.equal(rows.find(d=>d.id===id).values.measurement,'42');assert.equal(rows.filter(d=>d.values.measurement==='99').length,2);
+ await page.reload();const field=(await get('meta')).types.find(t=>t.name==='Asset').fields.find(f=>f.name==='measurement');assert.equal(field.type,'Integer');assert.equal(field.required,true);
+ assert.deepEqual(errors,[]);console.log('PASS conversion UI: exact narrowing plus rename/required backfill; schema reload; no runtime errors');await browser.close();
+})().catch(e=>{console.error(e);process.exit(1)});

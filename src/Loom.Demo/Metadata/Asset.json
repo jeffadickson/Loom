@@ -1,0 +1,69 @@
+{
+  "name": "Asset",
+  "label": "Equipment",
+  "version": 1,
+  "titleField": "name",
+  "submittable": false,
+  "fields": [
+    {
+      "name": "name",
+      "label": "Equipment name",
+      "type": "Text",
+      "required": true,
+      "id": "e5bb583c88a666ec7d9a75add42cabc4"
+    },
+    {
+      "name": "tag",
+      "label": "Asset tag",
+      "type": "Text",
+      "required": true,
+      "unique": true,
+      "id": "94907ed369f912b035b0b9d47161023a"
+    },
+    {
+      "name": "category",
+      "label": "Category",
+      "type": "Select",
+      "required": true,
+      "options": [
+        "Electronics",
+        "Mechanical",
+        "Facilities"
+      ],
+      "id": "ae7ec89aadf7a1c5ec72b2520784269f"
+    },
+    {
+      "name": "location",
+      "label": "Location",
+      "type": "Text",
+      "required": true,
+      "id": "c4104c406c67567456427e88a129fdc5"
+    },
+    {
+      "name": "active",
+      "label": "In service",
+      "type": "Boolean",
+      "required": true,
+      "id": "a315132afdd948f5f17bbe6da3677f60"
+    }
+  ],
+  "permissions": {
+    "Admin": [
+      "read",
+      "create",
+      "write",
+      "delete",
+      "audit"
+    ],
+    "Editor": [
+      "read",
+      "create",
+      "write",
+      "audit"
+    ],
+    "Viewer": [
+      "read"
+    ]
+  },
+  "id": "ba793989d79aa8559ad3acab1bb4dd3d"
+}

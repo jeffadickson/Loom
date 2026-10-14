@@ -1,0 +1,7 @@
+PASS designer UI: field rename and optional addition produce a reviewable plan
+PASS designer UI: apply updates generated list while retaining existing values
+PASS designer UI: new field saves and survives reload
+PASS designer UI: migration history visible
+PASS designer UI: accepted model export
+PASS designer UI: editor hidden for viewer
+PASS designer UI: no JavaScript errors

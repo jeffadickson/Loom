@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Loom • Offline framework demo</title><style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;color:#243730;background:#f5f6f2;font-size:14px}*{box-sizing:border-box}body{margin:0;display:flex;min-height:100vh}button,input,select{font:inherit}button{cursor:pointer;border:1px solid #dce2db;border-radius:7px;background:white;padding:9px 13px;color:inherit}button:hover{background:#eef3ed}button:disabled{opacity:.45;cursor:default}input,select{padding:9px 11px;border:1px solid #d5ded5;background:white;border-radius:7px;color:inherit}input:focus,select:focus,button:focus-visible{outline:2px solid #3e806a;outline-offset:2px}aside{width:248px;background:#193f34;color:#e5eee7;padding:28px 24px;display:flex;flex-direction:column;flex-shrink:0;min-height:100vh}.brand{display:flex;align-items:center;font-size:32px;letter-spacing:-1px;font-weight:650;gap:10px;margin-bottom:53px}.mark{background:#dbebc4;color:#193f34;font-size:24px;width:36px;height:36px;border-radius:9px;text-align:center;line-height:36px}.beta{font-size:9px;letter-spacing:2px;border:1px solid #698476;padding:4px;margin-left:auto}.eyebrow{font-size:10px;font-weight:700;letter-spacing:1.8px;color:#819388;margin-bottom:10px}aside h2{font-size:16px;margin:0 0 22px}nav button{display:block;background:none;color:#b6ccc0;width:100%;text-align:left;border:0;margin-bottom:8px;padding:13px}nav button.active,nav button:hover{background:#305449;color:white}.aside-note{margin-top:70px;border-top:1px solid #3d5e51;padding-top:25px}.aside-note strong{font-weight:500;line-height:1.6}.aside-note p{font-size:12px;color:#a8c0b2;line-height:1.8}.subtle{background:none;color:#d0e2bf;border:0;padding-left:0}.version{font-size:9px;letter-spacing:1.4px;color:#93ac9d;margin-top:auto;padding-top:50px}main{width:calc(100% - 248px);padding:0 42px 28px;max-width:1600px}header{height:80px;border-bottom:1px solid #dfe5dd;display:flex;justify-content:space-between;align-items:center;color:#68786c;font-size:12px}.live{display:inline-block;background:#538367;width:7px;height:7px;border-radius:50%;margin-right:9px}.role{display:flex;gap:12px;align-items:center}.role select{padding:7px 12px}.heading{display:flex;justify-content:space-between;align-items:center;padding:34px 0 20px}h1{font-size:34px;font-weight:550;letter-spacing:-1.4px;margin:0 0 10px}.heading p:not(.eyebrow){color:#718075;font-size:13px;margin:0}.primary{background:#235b45;color:white;border-color:#235b45}.primary:hover{background:#194a37}.banner{font-size:11px;color:#7b704c;background:#f2efdf;padding:10px 14px;border-radius:6px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:25px 0}.stats article{background:white;border:1px solid #e1e6dc;border-radius:9px;padding:20px 23px}.stats span{display:block;font-size:9px;letter-spacing:1.5px;color:#7e8c80}.stats strong{display:block;font-size:27px;font-weight:550;margin:10px 0 3px}.stats small{color:#8b958d;font-size:11px}.panel{background:white;border:1px solid #dfe5dc;border-radius:10px;overflow:hidden}.toolbar{display:flex;justify-content:space-between;padding:15px 19px;border-bottom:1px solid #e8ece5;gap:10px;flex-wrap:wrap}.tabs{display:flex;gap:3px;align-items:center}.tabs button{border:0;color:#7c897f}.tabs button.selected{background:#edf3e8;color:#285d42}.tools{display:flex;gap:6px;align-items:center}.tools input{max-width:190px}.tools select{max-width:155px}.tools button{font-size:12px}#content{overflow:auto;min-height:230px}table{border-collapse:collapse;width:100%;text-align:left;white-space:nowrap}th{font-size:10px;color:#849184;letter-spacing:.5px;font-weight:600;background:#fafbf8;padding:14px 18px}td{padding:17px 18px;border-bottom:1px solid #eef1ea;font-size:12px}tbody tr:hover{background:#f8faf5}.record-link{background:none;border:0;padding:0;color:#2a644b;font-weight:600;text-align:left}.pill{display:inline-block;border-radius:12px;background:#edf2e5;color:#547044;padding:4px 9px;font-size:10px}.pill.high{background:#fbefd6;color:#9c7624}.pill.urgent{background:#fae3df;color:#a44a3a}.pill.submitted{background:#dcefe7;color:#2c7456}.pill.cancelled{background:#ececec;color:#777}footer{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;font-size:11px;color:#869181}footer button{font-size:11px;padding:6px 10px}.bottom-note{font-size:11px;color:#849080;margin-top:20px}#error,#formError{padding:12px;background:#ffede8;color:#9b3c2d;font-size:13px}pre{font-size:12px;line-height:1.6;padding:20px;white-space:pre-wrap}dialog{border:0;border-radius:13px;padding:26px;width:600px;max-width:95vw;max-height:90vh;color:inherit;box-shadow:0 30px 90px #183a3433}dialog::backdrop{background:#183a3470}.dialog-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}.dialog-heading h2{font-size:23px;margin:0}.dialog-heading button{border:0}.dialog-heading .eyebrow{margin-top:0}#fields{display:grid;grid-template-columns:1fr 1fr;gap:18px}#fields label{display:flex;flex-direction:column;gap:7px;font-size:12px}#fields label:first-child{grid-column:1 / -1}#fields input,#fields select{width:100%}.hint{font-size:10px;color:#8b988a}.dialog-footer{display:flex;justify-content:space-between;align-items:center;margin-top:26px}#actions{display:flex;gap:8px;margin-top:15px}#history{margin-top:22px;border-top:1px solid #e3e8df;font-size:12px}#history details{padding:8px 0}#history pre{padding:10px;background:#f5f7f1;font-size:11px}.empty{text-align:center;padding:60px;color:#82907f}@media(max-width:1000px){aside{width:195px;padding:25px 17px}main{width:calc(100% - 195px);padding:0 20px 20px}.tools{flex-wrap:wrap}.heading{gap:16px}}@media(max-width:650px){body{display:block}aside{width:100%;min-height:0;padding:14px 20px}.brand{margin:0;font-size:25px}aside .eyebrow,aside h2,.aside-note,.version{display:none}nav{display:flex;margin-top:12px}nav button{margin:0}main{width:100%;padding:0 14px 20px}header{height:65px}.heading{padding-top:24px}h1{font-size:27px}.stats{gap:7px}.stats article{padding:14px 10px}.stats strong{font-size:20px}.stats small{font-size:9px}.heading p:not(.eyebrow){font-size:11px}#fields{grid-template-columns:1fr}.tools input{max-width:150px}}
+#schemaEditor{width:850px}#designerError{padding:12px;background:#ffede8;color:#9b3c2d;margin:12px 0}.designer-intro{font-size:13px;color:#6b7d6f;line-height:1.6}.model-table{overflow:auto}.model-table input,#newFields input{max-width:100%;width:100%}.model-table td,#newFields td{padding:10px}.model-table td:last-child{font-size:11px;color:#738574}#newFields{margin:12px 0;overflow:auto}.designer-actions{display:flex;gap:10px;margin:22px 0}#migrationPreview{background:#f1f6eb;padding:18px;border-radius:8px}#migrationPreview li{margin:9px 0;line-height:1.5}#migrationPreview pre{padding:12px;background:white}#migrationHistory{margin-top:24px;font-size:12px}#migrationEntries details{padding:8px 0}#migrationEntries pre{background:#f5f7f1}.model-table table{min-width:530px}#newFields table{min-width:530px}
+</style></head>
+<body>
+<aside><div class="brand"><span class="mark">L</span>loom<span class="beta">LAB</span></div><p class="eyebrow">WORKSPACE</p><h2>Equipment desk</h2><nav id="types"></nav><div class="aside-note"><strong>One definition.<br>A working application.</strong><p>Forms, validation, records and APIs, woven from metadata.</p><button id="schemaButton" class="subtle">Inspect the model ↗</button></div><div class="version">FRAMEWORK PREVIEW / 0.2</div></aside>
+<main><header><div><span class="live"></span><span id="provider">Connecting…</span></div><label class="role">Demo role <select id="role"><option>Admin</option><option>Editor</option><option>Viewer</option></select></label></header>
+<section class="heading"><div><p class="eyebrow">NORTHSTAR / OPERATIONS</p><h1 id="title">Equipment</h1><p id="subtitle">Your equipment, service work and a clear history of every change.</p></div><button id="create" class="primary">＋ New record</button></section>
+<div class="banner">Interactive local demo · Roles simulate permissions; they are not sign-in accounts.</div>
+<section class="stats"><article><span>RECORDS</span><strong id="count">—</strong><small>In this collection</small></article><article><span>MODEL VERSION</span><strong id="schemaVersion">—</strong><small>JSON is the source of truth</small></article><article><span>STORAGE</span><strong id="storage">—</strong><small id="durable">Configurable provider</small></article></section>
+<section class="panel"><div class="toolbar"><div class="tabs"><button id="recordsTab" class="selected">Records</button><button id="reportTab">Report</button><button id="modelTab">Model</button><button id="design" hidden>Edit model</button></div><div class="tools"><input id="search" aria-label="Search records" placeholder="Search this collection…"><select id="sort" aria-label="Sort by"></select><button id="direction" title="Reverse sort order">↑</button><button id="export">Export CSV</button></div></div><div id="error" role="alert" hidden></div><div id="content"></div><footer><span id="summary"></span><div><button id="previous">← Previous</button><button id="next">Next →</button></div></footer></section>
+<p class="bottom-note">Try creating a work order. The linked equipment picker and form are generated; C# calculates the estimate.</p>
+</main>
+<dialog id="editor"><form id="form"><div class="dialog-heading"><div><p class="eyebrow" id="editorKicker">NEW DOCUMENT</p><h2 id="editorTitle">New record</h2></div><button type="button" id="close" aria-label="Close dialog">✕</button></div><div id="formError" role="alert" hidden></div><div id="fields"></div><div class="dialog-footer"><span id="recordState"></span><button type="submit" class="primary" id="save">Save record</button></div></form><div id="actions"></div><section id="history"></section></dialog>
+<dialog id="schemaEditor"><div class="dialog-heading"><div><p class="eyebrow">APPLICATION BUILDER</p><h2 id="designerTitle">Edit model</h2></div><button id="designerClose" aria-label="Close model editor">✕</button></div>
+<p class="designer-intro">Change a field name or caption, or add an optional field. Preview the database changes before applying them. Existing values stay with their field.</p>
+<div id="designerError" role="alert" hidden></div><div class="model-table"><table><thead><tr><th>Field name</th><th>Caption</th><th>Type</th></tr></thead><tbody id="modelFields"></tbody></table></div>
+<div id="newFields"></div><button id="addModelField">＋ Add optional field</button>
+<div class="designer-actions"><button id="previewMigration" class="primary">Preview changes</button><button id="exportModel">Export model</button></div>
+<section id="migrationPreview" hidden><h3>Migration preview</h3><p id="migrationRows"></p><ul id="migrationChanges"></ul><details><summary>Database operations</summary><pre id="migrationSql"></pre></details><button id="applyMigration" class="primary">Apply changes</button></section>
+<details id="migrationHistory"><summary>Applied migrations</summary><div id="migrationEntries"></div></details>
+</dialog><script>window.LOOM_MODELS=[{"name": "Asset", "label": "Equipment", "version": 1, "titleField": "name", "submittable": false, "fields": [{"name": "name", "label": "Equipment name", "type": "Text", "required": true, "id": "e5bb583c88a666ec7d9a75add42cabc4"}, {"name": "tag", "label": "Asset tag", "type": "Text", "required": true, "unique": true, "id": "94907ed369f912b035b0b9d47161023a"}, {"name": "category", "label": "Category", "type": "Select", "required": true, "options": ["Electronics", "Mechanical", "Facilities"], "id": "ae7ec89aadf7a1c5ec72b2520784269f"}, {"name": "location", "label": "Location", "type": "Text", "required": true, "id": "c4104c406c67567456427e88a129fdc5"}, {"name": "active", "label": "In service", "type": "Boolean", "required": true, "id": "a315132afdd948f5f17bbe6da3677f60"}], "permissions": {"Admin": ["read", "create", "write", "delete", "audit"], "Editor": ["read", "create", "write", "audit"], "Viewer": ["read"]}, "id": "ba793989d79aa8559ad3acab1bb4dd3d"}, {"name": "WorkOrder", "label": "Work orders", "version": 1, "titleField": "title", "submittable": true, "fields": [{"name": "title", "label": "Work description", "type": "Text", "required": true, "id": "785211e68cf9d8b61ab52d72246c2263"}, {"name": "asset", "label": "Equipment", "type": "Link", "target": "Asset", "required": true, "id": "063b0295f0faf70799b02cb29a75ceef"}, {"name": "priority", "label": "Priority", "type": "Select", "options": ["Routine", "High", "Urgent"], "required": true, "id": "89fe833e9acb0279c3718d0645f4e769"}, {"name": "due", "label": "Due date", "type": "Date", "required": true, "id": "25d6648213c2e65d73f71e1e97d235ea"}, {"name": "hours", "label": "Estimated hours", "type": "Decimal", "required": true, "id": "d90072863e835577519993d5d0453047"}, {"name": "rate", "label": "Hourly rate ($)", "type": "Decimal", "required": true, "id": "64adee66db9c168a6748760af3bdb6d9"}, {"name": "estimate", "label": "Estimate ($)", "type": "Decimal", "readOnly": true, "required": true, "id": "b6492ce67c54b3ba50b018b94c12d692"}], "permissions": {"Admin": ["read", "create", "write", "delete", "submit", "cancel", "audit"], "Editor": ["read", "create", "write", "submit", "audit"], "Viewer": ["read"]}, "id": "cb389ca1b459b17689f79b1ae5630900"}];
+// Offline UI demonstration only. The real implementation is in src/Loom.Core and Loom.Sqlite.
+(() => {
+  let schemas=window.LOOM_MODELS;
+  const key='loom-offline-demo-v02';
+  const pending=new Map();
+  const fingerprint=()=>JSON.stringify(schemas);
+  const stamp=()=>new Date().toISOString();
+  const clone=x=>JSON.parse(JSON.stringify(x));
+  const id=()=>globalThis.crypto?.randomUUID?.()??Math.random().toString(36).slice(2)+Date.now();
+  const record=(type,id,values)=>({id,type,version:1,state:'Draft',createdAt:stamp(),modifiedAt:stamp(),values});
+  const seed=()=>({models:clone(window.LOOM_MODELS),migrations:[],docs:[record('Asset','asset-1',{name:'Bench oscilloscope',tag:'LAB-001',category:'Electronics',location:'Lab A / Bench 3',active:true}),record('Asset','asset-2',{name:'Vacuum pump',tag:'LAB-002',category:'Mechanical',location:'Lab B',active:true}),record('Asset','asset-3',{name:'Environmental chamber',tag:'LAB-003',category:'Facilities',location:'Test facility',active:true}),record('WorkOrder','work-1',{title:'Annual calibration',asset:'asset-1',priority:'High',due:'2026-11-02',hours:3,rate:125,estimate:375})],audit:[]});
+  let state;try{state=JSON.parse(localStorage.getItem(key))||seed()}catch{state=seed()}
+  schemas=state.models;
+  const persist=()=>{try{localStorage.setItem(key,JSON.stringify(state))}catch{/* Sandboxed previews may forbid persistent browser storage. */}};
+  const fail=(status,message)=>{throw {status,message}};
+  window.fetch=async(url,options={})=>{
+    const snapshot=clone(state);
+    try{
+      const path=new URL(url,'http://offline.local'),parts=path.pathname.split('/').filter(Boolean),q=path.searchParams;
+      if(parts[0]!=='api')fail(404,'Offline adapter only supports the demonstration API.');
+      const role=options.headers?.['X-Demo-Role'];if(!['Admin','Editor','Viewer'].includes(role))fail(403,'Invalid demo role.');
+      const method=options.method||'GET',body=options.body?JSON.parse(options.body):null;
+      const type=parts[2],schema=schemas.find(t=>t.name===type);
+      let result;
+      if(parts[1]==='meta')result={name:'Loom',version:'0.2',schemaHash:fingerprint(),designer:role==='Admin',actor:{id:'demo-'+role.toLowerCase(),role},provider:{name:'Browser preview',durable:false,capabilities:['UI demonstration']},types:schemas.map(t=>({...t,actions:t.permissions[role]||[]}))};
+      else if(parts[1]==='designer'){
+        if(role!=='Admin')fail(403,'Only administrators can edit models.');
+        if(parts[2]==='history')result=state.migrations;
+        else if(parts[2]==='export')return new Response(JSON.stringify(schemas,null,2),{headers:{'Content-Type':'application/json'}});
+        else if(parts[2]==='plan'){
+          if(body.sourceHash!==fingerprint())fail(409,'Model changed. Reopen the designer.');
+          const old=schemas.find(s=>s.name===body.type);if(!old)fail(404,'Missing model.');
+          if(body.fields.length!==old.fields.length)fail(400,'Preserve all field identities.');
+          const next=clone(old),changes=[],sql=[];
+          for(const f of next.fields){const edit=body.fields.find(e=>e.id===f.id);if(!edit)fail(400,'Missing permanent field identity.');
+            if(f.name!==edit.name){if(old.name==='WorkOrder'&&['hours','rate','estimate'].includes(f.name))fail(422,f.name+' is used by a C# hook. Update its dependencies first.');if(old.fields.some(o=>o.id!==f.id&&o.name.toLowerCase()===edit.name.toLowerCase()))fail(422,'Choose a new unused field name.');changes.push({kind:'RenameField',type:old.name,fieldId:f.id,description:'Rename '+f.name+' → '+edit.name+'; preserve values.'});sql.push('ALTER TABLE "'+old.name+'" RENAME COLUMN "'+f.name+'" TO "'+edit.name+'";');if(next.titleField===f.name)next.titleField=edit.name;f.name=edit.name}
+            if(f.label!==edit.label){changes.push({kind:'ChangeLabel',type:old.name,fieldId:f.id,description:'Caption: '+f.label+' → '+edit.label+'; no column change.'});f.label=edit.label}
+          }
+          for(const added of body.additions){if(!['Text','Integer','Decimal','Date','Boolean'].includes(added.type))fail(422,'Choose an optional scalar type.');const f={...added,id:added.id||id().replaceAll('-','')};next.fields.push(f);changes.push({kind:'AddField',type:old.name,fieldId:f.id,description:'Add optional '+f.name+'; existing values start empty.'});sql.push('ALTER TABLE "'+old.name+'" ADD COLUMN "'+f.name+'" '+(['Integer','Boolean'].includes(f.type)?'INTEGER':'TEXT')+';')}
+          for(const f of next.fields)if(!/^[A-Za-z][A-Za-z0-9_]{0,62}$/.test(f.name)||['id','version','state','createdat','modifiedat'].includes(f.name.toLowerCase())||!f.label.trim())fail(422,'Use valid non-reserved names and nonempty captions.');
+          if(new Set(next.fields.map(f=>f.name.toLowerCase())).size!==next.fields.length)fail(422,'Duplicate field name.');
+          next.version++;changes.push({kind:'ModelVersion',type:old.name,description:'Model version '+old.version+' → '+next.version});
+          result={id:id(),sourceHash:fingerprint(),changes,sql,rows:Object.fromEntries(schemas.map(t=>[t.name,state.docs.filter(d=>d.type===t.name).length])),target:schemas.map(t=>t.id===old.id?next:clone(t))};pending.set(result.id,clone(result));
+        }else if(parts[2]==='apply'){
+          const p=pending.get(body.planId);if(!p||p.sourceHash!==fingerprint())fail(409,'Preview the change again.');const before=clone(schemas);
+          for(const type of p.target){const old=schemas.find(t=>t.id===type.id);for(const d of state.docs.filter(d=>d.type===type.name)){const values={};for(const f of type.fields){const previous=old.fields.find(o=>o.id===f.id);values[f.name]=previous?d.values[previous.name]??null:null}d.values=values}}
+          schemas=clone(p.target);state.models=schemas;state.migrations.push({id:p.id,actor:'demo-admin',at:stamp(),changes:p.changes,before,after:clone(schemas)});pending.delete(body.planId);result={schemaHash:fingerprint(),message:'Offline model updated.'};
+        }else fail(404,'Unknown designer action.');
+      }
+      else{
+        if(!schema)fail(404,'Unknown document type.');
+        const auth=action=>{if(!schema.permissions[role]?.includes(action))fail(403,'This role cannot '+action+' '+schema.label+'.')};
+        const doc=state.docs.find(d=>d.type===type&&d.id===parts[3]);
+        const requireDoc=()=>{if(!doc)fail(404,'Document not found.');return doc};
+        const audit=(action,before,after)=>state.audit.push({id:id(),type,documentId:(after||before).id,actor:'demo-'+role.toLowerCase(),action,at:stamp(),before:clone(before),after:clone(after)});
+        const checkVersion=version=>{requireDoc();if(doc.version!==version)fail(409,'Document changed. Reload before saving.')};
+        const validate=values=>{
+          for(const name of Object.keys(values))if(!schema.fields.some(f=>f.name===name&&!f.readOnly))fail(400,'Unknown or read-only field: '+name);
+          const output={};for(const f of schema.fields){if(f.readOnly)continue;const raw=values[f.name],v=raw==null?'':String(raw).trim();if(!v){if(f.required)fail(422,f.label+' is required.');output[f.name]=null;continue}
+            if(f.type==='Decimal'||f.type==='Integer'){const n=Number(v);if(!Number.isFinite(n)||(f.type==='Integer'&&!Number.isInteger(n)))fail(422,f.label+' must be numeric.');output[f.name]=n}
+            else if(f.type==='Boolean'){if(!['true','false'].includes(v))fail(422,f.label+' must be true or false.');output[f.name]=v==='true'}
+            else{if(f.type==='Select'&&!f.options.includes(v))fail(422,'Invalid '+f.label);if(f.type==='Link'&&!state.docs.some(d=>d.type===f.target&&d.id===v))fail(422,'Missing linked document.');if(f.type==='Date'&&!/^\d{4}-\d{2}-\d{2}$/.test(v))fail(422,'Invalid date.');output[f.name]=v}
+            if(f.unique&&state.docs.some(d=>d.type===type&&d.id!==doc?.id&&d.values[f.name]===output[f.name]))fail(409,f.label+' must be unique.');
+          }
+          if(type==='WorkOrder'){if(!(output.hours>0&&output.hours<=10000))fail(422,'Estimated hours must be greater than zero and no more than 10,000.');if(!(output.rate>=0&&output.rate<=100000))fail(422,'Hourly rate must be between 0 and 100,000.');output.estimate=Math.round(output.hours*output.rate*100)/100}
+          return output;
+        };
+        if(parts[4]==='audit'){auth('audit');result=state.audit.filter(e=>e.type===type&&e.documentId===parts[3])}
+        else if(parts[1]==='reports'||(method==='GET'&&!parts[3])){
+          auth('read');let docs=state.docs.filter(d=>d.type===type);const search=q.get('search')?.toLowerCase();if(search)docs=docs.filter(d=>Object.values(d.values).some(v=>String(v).toLowerCase().includes(search)));if(q.has('field'))docs=docs.filter(d=>String(d.values[q.get('field')])===q.get('equals'));
+          const sort=q.get('sort')||schema.titleField,dir=q.get('descending')==='true'?-1:1;docs.sort((a,b)=>{const x=a.values[sort],y=b.values[sort];return dir*(typeof x==='number'?x-y:String(x??'').localeCompare(String(y??'')))});
+          if(parts[3]==='csv'){const csv=v=>'"'+String(v??'').replace(/^[=+\-@\t\r]/,"'$&").replaceAll('"','""')+'"';return new Response([schema.fields.map(f=>csv(f.label)).join(','),...docs.map(d=>schema.fields.map(f=>csv(d.values[f.name])).join(','))].join('\n'),{headers:{'Content-Type':'text/csv'}})}
+          const skip=Number(q.get('skip')||0),take=Number(q.get('take')||50);result={total:docs.length,items:docs.slice(skip,skip+take)};
+        }else if(method==='GET'){auth('read');result=requireDoc()}
+        else if(method==='POST'&&!parts[3]){auth('create');const d=record(type,id(),validate(body));state.docs.push(d);audit('create',null,d);result=d}
+        else if(method==='PUT'){auth('write');checkVersion(body.version);if(doc.state!=='Draft')fail(409,'Only draft documents can be edited.');const before=clone(doc);doc.values=validate(body.values);doc.version++;doc.modifiedAt=stamp();audit('update',before,doc);result=doc}
+        else if(method==='POST'&&parts[4]==='actions'){const action=parts[5];auth(action);checkVersion(body.version);if(!schema.submittable||doc.state!==(action==='submit'?'Draft':'Submitted'))fail(409,'Invalid transition.');const before=clone(doc);doc.state=action==='submit'?'Submitted':'Cancelled';doc.version++;doc.modifiedAt=stamp();audit(action,before,doc);result=doc}
+        else if(method==='DELETE'){auth('delete');checkVersion(Number(q.get('version')));if(doc.state!=='Draft')fail(409,'Only drafts can be deleted.');for(const t of schemas)for(const f of t.fields.filter(f=>f.type==='Link'&&f.target===type))if(state.docs.some(d=>d.type===t.name&&d.values[f.name]===doc.id))fail(409,'Document is referenced; remove links first.');state.docs=state.docs.filter(d=>d!==doc);audit('delete',doc,null);persist();return new Response(null,{status:204})}
+        else fail(400,'Unsupported preview operation.');
+      }
+      persist();return new Response(JSON.stringify(result),{headers:{'Content-Type':'application/json'}});
+    }catch(e){state=snapshot;schemas=state.models;return new Response(JSON.stringify({error:e.message||'Preview error.'}),{status:e.status||500,headers:{'Content-Type':'application/json'}})}
+  };
+  document.querySelector('.banner').replaceChildren(document.createTextNode('Offline UI preview · JavaScript/browser storage, not the C# server. No data leaves this page. '));
+  const reset=document.createElement('button');reset.textContent='Reset sample';reset.onclick=()=>{if(confirm('Reset the offline sample and discard its changes?')){state=seed();persist();location.reload()}};document.querySelector('.banner').append(reset);
+  document.querySelector('.bottom-note').textContent='This preview demonstrates the generated interface. Run the included .NET project to exercise C# hooks, SQLite and transactional guarantees.';
+})();
+
+'use strict';
+const $ = id => document.getElementById(id);
+let meta, type='Asset', tab='records', rows=[], skip=0, total=0, descending=false, current=null;
+const labels=new Map();
+const schema=()=>meta.types.find(t=>t.name===type);
+const allowed=action=>schema().actions.includes(action);
+async function api(path, method='GET', body){
+  const response=await fetch('/api/'+path,{method,headers:{'Content-Type':'application/json','X-Loom-Demo':'local','X-Demo-Role':$('role').value,'X-Loom-Schema':meta?.schemaHash||''},body:body===undefined?undefined:JSON.stringify(body)});
+  if(!response.ok){let error;try{error=(await response.json()).error}catch{error='Request failed ('+response.status+')'}throw Error(error)}
+  return response.status===204?null:response.json();
+}
+function showError(e, form=false){const el=$(form?'formError':'error');el.textContent=e.message;el.hidden=false}
+function element(tag,text,cls){const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(cls)el.className=cls;return el}
+async function boot(){
+  try{meta=await api('meta');$('provider').textContent=meta.provider.name+' connected';$('design').hidden=!meta.designer;$('storage').textContent=meta.provider.name;$('durable').textContent=meta.provider.durable?'Saved across restarts':'Temporary • resets on restart';
+    $('types').replaceChildren(...meta.types.map(t=>{const b=element('button',t.label);b.classList.toggle('active',t.name===type);b.onclick=()=>choose(t.name);return b}));
+    $('sort').replaceChildren(...schema().fields.map(f=>{const o=element('option',f.label);o.value=f.name;return o}));$('sort').value=schema().titleField;
+    await load();
+  }catch(e){showError(e)}
+}
+async function choose(name){type=name;skip=0;$('search').value='';await boot()}
+async function linkLabels(){
+  labels.clear();
+  for(const f of schema().fields.filter(f=>f.type==='Link')){
+    const target=meta.types.find(t=>t.name===f.target);if(!target)continue;
+    const page=await api('documents/'+f.target+'?take=200');for(const d of page.items)labels.set(d.id,d.values[target.titleField]);
+  }
+}
+async function load(){
+ try{$('error').hidden=true;$('title').textContent=schema().label;$('schemaVersion').textContent='v'+schema().version;$('create').hidden=!allowed('create');
+   for(const name of ['records','report','model'])$(name==='model'?'modelTab':name+'Tab').classList.toggle('selected',tab===name);
+   $('search').disabled=tab==='model';$('sort').disabled=tab==='model';$('direction').disabled=tab==='model';$('export').hidden=tab==='model';
+   const q=new URLSearchParams({search:$('search').value,sort:$('sort').value,descending,skip,take:20});
+   const page=await api('documents/'+type+'?'+q);rows=page.items;total=page.total;await linkLabels();
+   $('count').textContent=total;$('summary').textContent=total?`${skip+1}–${skip+rows.length} of ${total} records`:'No records';$('previous').disabled=skip===0;$('next').disabled=skip+20>=total;
+   if(tab==='model'){$('content').replaceChildren(element('pre',JSON.stringify(schema(),null,2)));return}
+   const fields=tab==='report'?schema().fields:schema().fields.slice(0,5);
+   const table=element('table'),thead=element('thead'),tr=element('tr');fields.forEach(f=>tr.append(element('th',f.label)));tr.append(element('th','State'));thead.append(tr);table.append(thead);
+   const tbody=element('tbody');for(const d of rows){const row=element('tr');fields.forEach((f,i)=>{const td=element('td'),value=d.values[f.name];const text=f.type==='Link'?(labels.get(value)||value):f.type==='Boolean'?(value?'Yes':'No'):value??'—';
+     if(i===0){const b=element('button',text,'record-link');b.onclick=()=>edit(d);td.append(b)}else if(f.type==='Select'){td.append(element('span',text,'pill '+String(text).toLowerCase()))}else td.textContent=text;row.append(td)});row.append(element('td'));row.lastChild.append(element('span',d.state,'pill '+d.state.toLowerCase()));tbody.append(row)}table.append(tbody);
+   $('content').replaceChildren(rows.length?table:element('div','No records match. Create a record or clear your search.','empty'));
+ }catch(e){showError(e)}
+}
+async function edit(doc=null){
+ try{current=doc?await api('documents/'+type+'/'+doc.id):null;$('formError').hidden=true;$('editorTitle').textContent=current?current.values[schema().titleField]:'New '+(type==='Asset'?'equipment':'work order');$('editorKicker').textContent=current?'DOCUMENT / VERSION '+current.version:'NEW DOCUMENT';$('fields').replaceChildren();$('history').replaceChildren();$('actions').replaceChildren();
+   const editable=!current||allowed('write')&&current.state==='Draft';
+   for(const f of schema().fields){const label=element('label',f.label+(f.required?' *':''));let control;
+     if(f.type==='Select'||f.type==='Link'||f.type==='Boolean'){control=element('select');let options=f.type==='Select'?f.options.map(x=>[x,x]):f.type==='Boolean'?[["true","Yes"],["false","No"]]:[];
+       if(f.type==='Link'){const target=meta.types.find(t=>t.name===f.target);const page=await api('documents/'+f.target+'?take=200');options=page.items.map(d=>[d.id,d.values[target.titleField]])}control.append(element('option','Select…'));control.firstChild.value='';for(const [value,text]of options){const o=element('option',text);o.value=value;control.append(o)}
+     }else{control=element('input');control.type=f.type==='Date'?'date':f.type==='Decimal'||f.type==='Integer'?'number':'text';if(control.type==='number')control.step=f.type==='Integer'?'1':'any'}
+     control.name=f.name;control.required=f.required&&!f.readOnly;control.disabled=f.readOnly||!editable;control.value=current?.values[f.name]??'';label.append(control);if(f.readOnly)label.append(element('span','Calculated by a C# hook on save','hint'));$('fields').append(label);
+   }
+   $('save').hidden=!editable;$('recordState').textContent=current?current.state+' · v'+current.version:'New draft';
+   if(current){for(const action of ['submit','cancel','delete']){if(!allowed(action))continue;if(action==='submit'&&(!schema().submittable||current.state!=='Draft'))continue;if(action==='cancel'&&current.state!=='Submitted')continue;if(action==='delete'&&current.state!=='Draft')continue;const b=element('button',action[0].toUpperCase()+action.slice(1));b.type='button';b.onclick=()=>act(action);$('actions').append(b)}
+     if(allowed('audit')){const entries=await api('documents/'+type+'/'+current.id+'/audit');$('history').append(element('h3','Change history'));for(const entry of entries.slice().reverse()){const details=element('details');details.append(element('summary',entry.action+' · '+entry.actor+' · '+new Date(entry.at).toLocaleString()));details.append(element('pre',JSON.stringify({before:entry.before?.values,after:entry.after?.values},null,2)));$('history').append(details)}}
+   }
+   if(!$('editor').open)$('editor').showModal();
+ }catch(e){showError(e,$('editor').open)}
+}
+$('form').onsubmit=async event=>{event.preventDefault();$('save').disabled=true;try{const values={};for(const f of schema().fields.filter(f=>!f.readOnly)){const value=$('form').elements.namedItem(f.name).value;values[f.name]=value===''?null:f.type==='Boolean'?value==='true':value}if(current)await api('documents/'+type+'/'+current.id,'PUT',{version:current.version,values});else await api('documents/'+type,'POST',values);$('editor').close();await load()}catch(e){showError(e,true)}finally{$('save').disabled=false}};
+async function act(action){if(!confirm(action+' this document?'))return;try{if(action==='delete')await api('documents/'+type+'/'+current.id+'?version='+current.version,'DELETE');else await api('documents/'+type+'/'+current.id+'/actions/'+action,'POST',{version:current.version});$('editor').close();await load()}catch(e){showError(e,true)}}
+$('close').onclick=()=>$('editor').close();$('create').onclick=()=>edit();$('role').onchange=()=>{$('editor').close();$('schemaEditor').close();boot()};
+for(const name of ['records','report','model'])$(name==='model'?'modelTab':name+'Tab').onclick=()=>{tab=name;load()};
+$('schemaButton').onclick=()=>{tab='model';load()};
+let timer;$('search').oninput=()=>{clearTimeout(timer);timer=setTimeout(()=>{skip=0;load()},250)};$('sort').onchange=()=>{skip=0;load()};$('direction').onclick=()=>{descending=!descending;$('direction').textContent=descending?'↓':'↑';load()};$('previous').onclick=()=>{skip-=20;load()};$('next').onclick=()=>{skip+=20;load()};
+$('export').onclick=async()=>{try{const r=await fetch('/api/reports/'+type+'/csv?'+new URLSearchParams({search:$('search').value,sort:$('sort').value,descending}),{headers:{'X-Loom-Demo':'local','X-Demo-Role':$('role').value}});if(!r.ok)throw Error((await r.json()).error);const u=URL.createObjectURL(await r.blob()),a=element('a');a.href=u;a.download=type+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}catch(e){showError(e)}};
+let modelDraft, migrationPlan;
+function modelError(error){$('designerError').textContent=error.message;$('designerError').hidden=false}
+function invalidatePlan(){migrationPlan=null;$('migrationPreview').hidden=true}
+function fieldRow(field, added=false){
+ const row=element('tr');row.dataset.field=field.name;
+ const name=element('input');name.value=field.name;name.className='field-name';name.setAttribute('aria-label','Field name '+field.name);name.oninput=()=>{field.name=name.value.trim();invalidatePlan()};
+ const label=element('input');label.value=field.label;label.className='field-label';label.setAttribute('aria-label','Caption '+field.name);label.oninput=()=>{field.label=label.value;invalidatePlan()};
+ const a=element('td'),b=element('td'),c=element('td');a.append(name);b.append(label);
+ if(added){const select=element('select');for(const t of ['Text','Integer','Decimal','Date','Boolean']){const o=element('option',t);select.append(o)}select.value=field.type;select.setAttribute('aria-label','New field type');select.onchange=()=>{field.type=select.value;invalidatePlan()};c.append(select);const remove=element('button','Remove');remove.onclick=()=>{modelDraft.additions=modelDraft.additions.filter(f=>f!==field);row.remove();invalidatePlan()};c.append(remove)}
+ else{c.textContent=field.type;name.title='Permanent field ID: '+field.id}
+ row.append(a,b,c);return row;
+}
+$('design').onclick=async()=>{
+ try{const fresh=await api('meta');if(fresh.schemaHash!==meta.schemaHash){await boot()}
+ const s=schema();modelDraft={sourceHash:meta.schemaHash,type:s.name,fields:s.fields.map(f=>({...f})),additions:[]};invalidatePlan();$('designerError').hidden=true;$('designerTitle').textContent='Edit '+s.label.toLowerCase();$('modelFields').replaceChildren(...modelDraft.fields.map(f=>fieldRow(f)));$('newFields').replaceChildren();$('migrationEntries').replaceChildren();
+ const entries=await api('designer/history');for(const e of entries.slice().reverse()){const d=element('details');d.append(element('summary',new Date(e.at).toLocaleString()+' · '+e.actor+' · '+e.changes.length+' changes'));d.append(element('pre',e.changes.map(c=>c.description).join('\n')));$('migrationEntries').append(d)}
+ if(!entries.length)$('migrationEntries').textContent='No migrations applied yet.';$('schemaEditor').showModal();
+ }catch(e){showError(e)}
+};
+$('designerClose').onclick=()=>$('schemaEditor').close();
+$('addModelField').onclick=()=>{const f={id:crypto.randomUUID().replaceAll('-',''),name:'newField'+(modelDraft.additions.length+1),label:'New field',type:'Text'};modelDraft.additions.push(f);let table=$('newFields').querySelector('table');if(!table){table=element('table');$('newFields').append(table)}table.append(fieldRow(f,true));invalidatePlan()};
+$('previewMigration').onclick=async()=>{try{$('designerError').hidden=true;migrationPlan=await api('designer/plan','POST',modelDraft);$('migrationChanges').replaceChildren(...migrationPlan.changes.map(c=>element('li',c.description)));$('migrationRows').textContent=Object.entries(migrationPlan.rows).map(([t,n])=>t+': '+n+' existing records').join(' · ');$('migrationSql').textContent=migrationPlan.sql.join('\n')||'Metadata only; no column changes.';$('migrationPreview').hidden=false}catch(e){invalidatePlan();modelError(e)}};
+$('applyMigration').onclick=async()=>{if(!migrationPlan)return;$('applyMigration').disabled=true;try{await api('designer/apply','POST',{planId:migrationPlan.id});$('schemaEditor').close();await boot()}catch(e){modelError(e)}finally{$('applyMigration').disabled=false}};
+$('exportModel').onclick=async()=>{try{const r=await fetch('/api/designer/export',{headers:{'X-Loom-Demo':'local','X-Demo-Role':$('role').value}});if(!r.ok)throw Error((await r.json()).error);const u=URL.createObjectURL(await r.blob()),a=element('a');a.href=u;a.download=meta.provider.name==='Browser preview'?'Loom_Model_Preview.json':'Loom_Model.zip';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}catch(e){modelError(e)}};
+boot();
+</script></body></html>

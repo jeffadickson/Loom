@@ -1,0 +1,2 @@
+PASS memory browser: exact integer and money edit, file upload/download, scale rejection
+PASS memory demo: fresh seed after restart, no persisted edits

@@ -1,0 +1,22 @@
+Created Oscilloscope; estimate = 300.0
+Updated estimate = 360; version = 2
+{
+  "total": 1,
+  "items": [
+    {
+      "id": "12d2b8b40159438594e252d4268374db",
+      "version": 1,
+      "state": "Draft",
+      "createdAt": "2026-10-14T05:42:20.4820776\u002B00:00",
+      "modifiedAt": "2026-10-14T05:42:20.4820776\u002B00:00",
+      "value": {
+        "name": "Oscilloscope",
+        "tag": "LAB-101",
+        "category": "Electronics",
+        "location": "Lab A",
+        "active": true
+      }
+    }
+  ]
+}
+Submitted state = Submitted

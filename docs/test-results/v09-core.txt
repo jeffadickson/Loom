@@ -1,0 +1,220 @@
+PASS authoring/report: C# attributes and JSON produce identical catalogs
+PASS authoring/report: saved report resolves field identity
+PASS authoring/report: unchanged serialized report retains values/filter/sort through rename
+PASS authoring/report: readable current names and captions
+PASS authoring/report: explicit report headings preserved
+PASS authoring/report: report cannot bypass document permissions
+PASS authoring/report: missing report identity fails explicitly
+PASS authoring/report: saved report survives database reopen
+PASS authoring/report: unsupported CLR type rejected
+PASS authoring/report: C# property rename retains explicitly declared identity
+PASS writer: empty report
+PASS writer: title and values HTML escaped
+PASS writer: linked records use escaped readable titles
+PASS writer: groups rendered
+PASS writer: group and grand sums exact
+PASS writer: print stylesheet and repeated headings
+PASS writer: permission enforced
+PASS writer: text totals refused
+PASS writer: unselected group refused
+PASS writer: bound blocks calculate full report sum and count
+PASS writer: bound blocks respect report filter
+PASS writer: empty sum is zero
+PASS writer: bound block prefix escaped
+PASS writer: unknown block source refused
+PASS writer: nonnumeric block field refused
+PASS writer: unselected block field refused
+PASS writer: missing sum field refused
+PASS writer: unexpected count field refused
+PASS writer: bound total resolves stable field identity
+PASS writer: captions resolve through identity
+PASS writer: linked titles respect target permissions
+PASS Memory: read permission
+PASS Memory: read-only role rejects write
+PASS Memory: audit permission
+PASS Memory: editor cannot delete
+PASS Memory: uniqueness
+PASS Memory: required field
+PASS Memory: select options
+PASS Memory: unknown field
+PASS Memory: missing link
+PASS Memory: C# validation hook
+PASS Memory: C# calculation hook
+PASS Memory: read-only field tampering
+PASS Memory: referenced delete blocked
+PASS Memory: update version and calculation
+PASS Memory: stale save rejected
+PASS Memory: stale save leaves data unchanged
+PASS Memory: invalid transition
+PASS Memory: submitted document locked
+PASS Memory: cancellation permission
+PASS Memory: lifecycle complete
+PASS Memory: audit only successful operations
+PASS Memory: returned audit snapshots cannot mutate stored history
+PASS Memory: search and filter
+PASS Memory: query field allowlist
+PASS Memory: bounded pagination
+PASS Memory: transaction rolls back record and audit
+PASS Memory: SQL values parameterized
+PASS Memory: audit survives deletion
+PASS Memory: concurrent writers cannot overwrite each other
+PASS Sqlite: read permission
+PASS Sqlite: read-only role rejects write
+PASS Sqlite: audit permission
+PASS Sqlite: editor cannot delete
+PASS Sqlite: uniqueness
+PASS Sqlite: required field
+PASS Sqlite: select options
+PASS Sqlite: unknown field
+PASS Sqlite: missing link
+PASS Sqlite: C# validation hook
+PASS Sqlite: C# calculation hook
+PASS Sqlite: read-only field tampering
+PASS Sqlite: referenced delete blocked
+PASS Sqlite: update version and calculation
+PASS Sqlite: stale save rejected
+PASS Sqlite: stale save leaves data unchanged
+PASS Sqlite: invalid transition
+PASS Sqlite: submitted document locked
+PASS Sqlite: cancellation permission
+PASS Sqlite: lifecycle complete
+PASS Sqlite: audit only successful operations
+PASS Sqlite: returned audit snapshots cannot mutate stored history
+PASS Sqlite: search and filter
+PASS Sqlite: query field allowlist
+PASS Sqlite: bounded pagination
+PASS Sqlite: transaction rolls back record and audit
+PASS Sqlite: SQL values parameterized
+PASS Sqlite: audit survives deletion
+PASS Sqlite: concurrent writers cannot overwrite each other
+PASS SQLite: persistence after reopening
+PASS SQLite: additive migration preserves records
+PASS SQLite: migration is idempotent
+PASS SQLite: schema downgrade refused
+PASS SQLite: destructive migration refused
+PASS Generator: decimal CLR type
+PASS Generator: date CLR type
+PASS layout: no saved layout uses default
+PASS layout: save authorization
+PASS layout: first save version
+PASS layout: stale overwrite refused
+PASS layout: CSS injection refused
+PASS layout: invalid column width refused
+PASS layout: empty columns refused
+PASS layout: positioned text escaped and placed
+PASS layout: page text escaped and page counters emitted
+PASS layout: horizontal band overflow refused
+PASS layout: vertical band overflow refused
+PASS layout: duplicate block identities refused
+PASS layout: oversized page header refused
+PASS layout: saved IDs survive field rename
+PASS layout: saved typography orientation footer rendered
+PASS layout: saved layout survives reopen
+PASS typed: Memory typed create
+PASS typed: Memory typed sort and paging
+PASS typed: Memory typed boolean filter
+PASS typed: Memory typed string filter
+PASS typed: Memory non-property expressions rejected
+PASS typed: Memory typed update
+PASS typed: Memory stale typed save refused
+PASS typed: Memory typed validation retained
+PASS typed: Memory failed update preserves values
+PASS typed: Memory generated JSON model supports typed repository
+PASS typed: Memory generated init properties round-trip
+PASS typed: Memory typed role permission retained
+PASS typed: Memory typed history permission retained
+PASS typed: Memory decimal/date and server calculation
+PASS typed: Memory calculated property ignored on save and recomputed
+PASS typed: Memory relationship deletion guard retained
+PASS typed: Memory typed submit
+PASS typed: Memory submitted edit locked
+PASS typed: Memory typed cancel
+PASS typed: Memory typed history
+PASS typed: Memory typed delete
+PASS typed: Sqlite typed create
+PASS typed: Sqlite typed sort and paging
+PASS typed: Sqlite typed boolean filter
+PASS typed: Sqlite typed string filter
+PASS typed: Sqlite non-property expressions rejected
+PASS typed: Sqlite typed update
+PASS typed: Sqlite stale typed save refused
+PASS typed: Sqlite typed validation retained
+PASS typed: Sqlite failed update preserves values
+PASS typed: Sqlite generated JSON model supports typed repository
+PASS typed: Sqlite generated init properties round-trip
+PASS typed: Sqlite typed role permission retained
+PASS typed: Sqlite typed history permission retained
+PASS typed: Sqlite decimal/date and server calculation
+PASS typed: Sqlite calculated property ignored on save and recomputed
+PASS typed: Sqlite relationship deletion guard retained
+PASS typed: Sqlite typed submit
+PASS typed: Sqlite submitted edit locked
+PASS typed: Sqlite typed cancel
+PASS typed: Sqlite typed history
+PASS typed: Sqlite typed delete
+PASS typed: C# property binds by ID after column rename
+PASS typed: typed selector follows renamed column
+PASS typed: typed write follows renamed column
+PASS typed: incomplete typed model refused instead of dropping unknown fields
+PASS migration: preview separates rename/addition from caption edit
+PASS migration: preview is read-only
+PASS migration: preview includes affected record count
+PASS migration: same source and target produce same plan ID
+PASS migration: provider denies non-admin migration
+PASS migration: injected ledger failure aborts migration
+PASS migration: failed apply restores metadata
+PASS migration: failed apply restores columns, data and ledger
+PASS migration: rename preserves values under new field name
+PASS migration: new optional field is null for existing rows
+PASS migration: schema edit preserves record identity/version
+PASS migration: linked records survive migration
+PASS migration: historical snapshots are not rewritten
+PASS migration: ledger retains previous schema for history interpretation
+PASS migration: ledger records migration actor
+PASS migration: reapplying completed plan is idempotent
+PASS migration: stale preview cannot overwrite a newer schema
+PASS migration: field removal blocked
+PASS migration: unsupported conversion blocked before mutation
+PASS migration: required addition without backfill blocked
+PASS migration: duplicate permanent IDs rejected
+PASS migration: C# hook dependency rename blocked
+PASS migration: accepted model survives database reopening
+PASS migration: reopening preserves renamed values and links
+PASS migration: migration ledger survives reopening
+PASS migration: out-of-band physical column drift detected
+PASS migration: legacy exact-name adoption provides stable IDs
+PASS migration: legacy adoption IDs are persisted
+PASS backfill: required fields need explicit backfills
+PASS backfill: duplicate backfill refused
+PASS backfill: existing field overwrite refused
+PASS backfill: invalid backfill value refused 0 
+PASS backfill: invalid backfill value refused 0  
+PASS backfill: invalid backfill value refused 1 1.5
+PASS backfill: invalid backfill value refused 2 not a number
+PASS backfill: invalid backfill value refused 3 maybe
+PASS backfill: invalid backfill value refused 4 2026-02-30
+PASS backfill: invalid backfill value refused 0 {}
+PASS backfill: preview reports affected rows and each backfill
+PASS backfill: preview leaves records unchanged
+PASS backfill: backfill value is part of plan identity
+PASS backfill: backfill ordering does not change identity
+PASS backfill: non-admin apply refused
+PASS backfill: ledger failure rolls back rebuild
+PASS backfill: rollback preserves schema data and ledger
+PASS backfill: SQL-looking text is literal; caller mutation cannot alter pending plan
+PASS backfill: scalar types retain exact values
+PASS backfill: combined rename and optional addition preserve identity and version
+PASS backfill: apply covers records added after preview
+PASS backfill: historical snapshots remain unchanged
+PASS backfill: ledger records explicit backfills
+PASS backfill: apply remains idempotent
+PASS backfill: future records must supply required values
+PASS backfill: custom indexes block rebuild instead of being lost
+PASS backfill: external foreign keys block rebuild
+PASS backfill: custom triggers block rebuild
+PASS backfill: successive rebuild preserves framework indexes
+PASS backfill: physical required constraint has no permanent default
+PASS backfill: unique indexes survive rebuild
+PASS backfill: required values survive database reopen
+
+218 checks passed.

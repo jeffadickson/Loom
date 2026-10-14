@@ -1,0 +1,21 @@
+PASS API: missing demo header denied
+PASS API: unknown role denied
+PASS API: metadata endpoint
+PASS API: create returns 201
+PASS API: read by viewer
+PASS API: write by viewer denied
+PASS API: duplicate reports conflict
+PASS API: HTTP concurrency guard
+PASS API: CSV formula neutralization
+PASS API: invalid sorting field
+PASS API: page bound
+PASS API: unknown model
+PASS API: required version binding
+PASS API: delete returns 204
+PASS API: deleted document is absent
+PASS API: deleted record history retained
+16 HTTP checks passed.
+PASS bindings: sum/count controls render calculated server values
+PASS bindings: saved field identity reloads; removing bound column refuses preview and re-adding recovers
+PASS bindings: saved report recalculates from changed data; no browser runtime errors
+PASS report API: persisted definition resolves readable columns and populated values

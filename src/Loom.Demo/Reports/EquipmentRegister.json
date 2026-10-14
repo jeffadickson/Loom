@@ -1,0 +1,16 @@
+{
+  "name": "EquipmentRegister",
+  "typeId": "ba793989d79aa8559ad3acab1bb4dd3d",
+  "columns": [
+    {
+      "fieldId": "e5bb583c88a666ec7d9a75add42cabc4"
+    },
+    {
+      "fieldId": "94907ed369f912b035b0b9d47161023a"
+    },
+    {
+      "fieldId": "c4104c406c67567456427e88a129fdc5"
+    }
+  ],
+  "sortFieldId": "94907ed369f912b035b0b9d47161023a"
+}

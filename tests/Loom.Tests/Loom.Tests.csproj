@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../../src/Loom.Sqlite/Loom.Sqlite.csproj" /><Compile Include="../../src/Loom.Demo/WorkOrderHook.cs" Link="WorkOrderHook.cs" /><Compile Include="../../src/Loom.Demo/Designer.cs" Link="Designer.cs" /><Compile Include="../../src/Loom.Demo/Models/EquipmentModels.cs" Link="EquipmentModels.cs" /><Compile Include="../../src/Loom.Demo/Generated/*.cs" Link="Generated/%(Filename)%(Extension)" /></ItemGroup>
+</Project>

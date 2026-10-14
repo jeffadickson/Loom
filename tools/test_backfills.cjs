@@ -1,0 +1,23 @@
+const {chromium}=require('playwright'),assert=require('node:assert/strict');
+(async()=>{
+ const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox']});
+ const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+ page.on('pageerror',e=>errors.push(e.message));const headers={'X-Loom-Demo':'local','X-Demo-Role':'Admin'};
+ const get=async path=>(await page.request.get('http://127.0.0.1:5080/api/'+path,{headers})).json();
+ await page.goto('http://127.0.0.1:5080');await page.locator('#design').click();await page.locator('#addModelField').click();
+ await page.locator('#newFields .field-name').fill('site');await page.locator('#newFields .field-label').fill('Site');
+ await page.getByLabel('Required new field',{exact:true}).check();
+ await page.locator('#previewMigration').click();await page.locator('#designerError').waitFor({state:'visible'});assert.match(await page.locator('#designerError').innerText(),/backfill/i);
+ await page.getByLabel('Backfill value',{exact:true}).fill('Main laboratory');await page.locator('#previewMigration').click();await page.locator('#migrationPreview').waitFor({state:'visible'});
+ assert.match(await page.locator('#migrationChanges').innerText(),/Main laboratory/);
+ assert.ok((await get('documents/Asset')).items.every(d=>d.values.site===undefined));
+ await page.locator('#applyMigration').click();await page.locator('#schemaEditor').waitFor({state:'hidden'});
+ const records=(await get('documents/Asset')).items;assert.equal(records.length,3);assert.ok(records.every(d=>d.values.site==='Main laboratory'));
+ console.log('PASS backfill UI: missing value rejected, read-only preview and atomic apply to three existing records');
+ await page.reload();const meta=await get('meta');assert.equal(meta.types.find(t=>t.name==='Asset').fields.find(f=>f.name==='site').required,true);
+ let response=await page.request.post('http://127.0.0.1:5080/api/documents/Asset',{headers,data:{name:'New instrument',tag:'BACKFILL-NEW',category:'Electronics',location:'Lab',active:true}});assert.equal(response.status(),422);
+ response=await page.request.post('http://127.0.0.1:5080/api/documents/Asset',{headers,data:{name:'New instrument',tag:'BACKFILL-NEW',category:'Electronics',location:'Lab',active:true,site:'Annex'}});assert.equal(response.status(),201);
+ const history=await get('designer/history');assert.equal(history.length,1);assert.equal(history[0].backfills[0].value,'Main laboratory');
+ assert.deepEqual(errors,[]);console.log('PASS backfill UI: accepted schema reloads, future records require explicit values, ledger retains backfill');
+ await browser.close();
+})().catch(e=>{console.error(e);process.exit(1)});

@@ -1,0 +1,87 @@
+{
+  "name": "WorkOrder",
+  "label": "Work orders",
+  "version": 1,
+  "titleField": "title",
+  "submittable": true,
+  "fields": [
+    {
+      "name": "title",
+      "label": "Work description",
+      "type": "Text",
+      "required": true,
+      "id": "785211e68cf9d8b61ab52d72246c2263"
+    },
+    {
+      "name": "asset",
+      "label": "Equipment",
+      "type": "Link",
+      "target": "Asset",
+      "required": true,
+      "id": "063b0295f0faf70799b02cb29a75ceef"
+    },
+    {
+      "name": "priority",
+      "label": "Priority",
+      "type": "Select",
+      "options": [
+        "Routine",
+        "High",
+        "Urgent"
+      ],
+      "required": true,
+      "id": "89fe833e9acb0279c3718d0645f4e769"
+    },
+    {
+      "name": "due",
+      "label": "Due date",
+      "type": "Date",
+      "required": true,
+      "id": "25d6648213c2e65d73f71e1e97d235ea"
+    },
+    {
+      "name": "hours",
+      "label": "Estimated hours",
+      "type": "Decimal",
+      "required": true,
+      "id": "d90072863e835577519993d5d0453047"
+    },
+    {
+      "name": "rate",
+      "label": "Hourly rate ($)",
+      "type": "Decimal",
+      "required": true,
+      "id": "64adee66db9c168a6748760af3bdb6d9"
+    },
+    {
+      "name": "estimate",
+      "label": "Estimate ($)",
+      "type": "Decimal",
+      "readOnly": true,
+      "required": true,
+      "id": "b6492ce67c54b3ba50b018b94c12d692"
+    }
+  ],
+  "permissions": {
+    "Admin": [
+      "read",
+      "create",
+      "write",
+      "delete",
+      "submit",
+      "cancel",
+      "audit"
+    ],
+    "Editor": [
+      "read",
+      "create",
+      "write",
+      "submit",
+      "audit"
+    ],
+    "Viewer": [
+      "read"
+    ]
+  },
+  "id": "cb389ca1b459b17689f79b1ae5630900"
+}

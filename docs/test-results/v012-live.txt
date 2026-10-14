@@ -1,0 +1,22 @@
+PASS API: missing demo header denied
+PASS API: unknown role denied
+PASS API: metadata endpoint
+PASS API: create returns 201
+PASS API: read by viewer
+PASS API: write by viewer denied
+PASS API: duplicate reports conflict
+PASS API: HTTP concurrency guard
+PASS API: CSV formula neutralization
+PASS API: invalid sorting field
+PASS API: page bound
+PASS API: unknown model
+PASS API: required version binding
+PASS API: delete returns 204
+PASS API: deleted document is absent
+PASS API: deleted record history retained
+16 HTTP checks passed.
+PASS type designer: Money/Binary/Uri additions, settings, SQLite save and transparent download
+PASS conversion UI: Integer to Decimal preview and apply preserve value
+PASS conversion UI: fractional narrowing rejected without modifying data
+PASS conversion UI: exact narrowing plus rename/required backfill; schema reload; no runtime errors
+PASS report API: persisted definition resolves readable columns and populated values

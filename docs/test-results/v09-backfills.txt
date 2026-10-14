@@ -1,0 +1,22 @@
+PASS API: missing demo header denied
+PASS API: unknown role denied
+PASS API: metadata endpoint
+PASS API: create returns 201
+PASS API: read by viewer
+PASS API: write by viewer denied
+PASS API: duplicate reports conflict
+PASS API: HTTP concurrency guard
+PASS API: CSV formula neutralization
+PASS API: invalid sorting field
+PASS API: page bound
+PASS API: unknown model
+PASS API: required version binding
+PASS API: delete returns 204
+PASS API: deleted document is absent
+PASS API: deleted record history retained
+16 HTTP checks passed.
+PASS backfill UI: missing value rejected, read-only preview and atomic apply to three existing records
+PASS backfill UI: accepted schema reloads, future records require explicit values, ledger retains backfill
+Reviewed model applied.
+PASS report API: persisted definition resolves readable columns and populated values
+PASS backfill CLI: reviewed value enforced; a new process preserves browser backfills and fills four records

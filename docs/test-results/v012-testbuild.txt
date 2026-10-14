@@ -1,0 +1,5 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Loom.Core -> /workspace/scratch/ebf52c09675b/LoomDemo/src/Loom.Core/bin/Debug/net8.0/Loom.Core.dll
+  Loom.Sqlite -> /workspace/scratch/ebf52c09675b/LoomDemo/src/Loom.Sqlite/bin/Debug/net8.0/Loom.Sqlite.dll
+  Loom.Tests -> /workspace/scratch/ebf52c09675b/LoomDemo/tests/Loom.Tests/bin/Debug/net8.0/Loom.Tests.dll

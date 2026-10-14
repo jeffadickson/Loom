@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Loom Science Lab</title>
+<style>
+:root{font-family:system-ui,-apple-system,sans-serif;color:#183d39;background:#f1f4f0;font-size:14px}*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button,select,input{border:1px solid #cbd8d1;border-radius:8px;padding:9px 12px;background:#fff;color:inherit}button{cursor:pointer}button:hover{background:#edf5ef}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #d39740;outline-offset:2px}.primary{background:#1b6555;color:white;border-color:#1b6555}.primary:hover{background:#124e42}header{background:#153e36;color:white;padding:24px max(20px,calc((100vw - 1160px)/2));display:flex;justify-content:space-between;gap:18px;align-items:center}.brand{font-size:27px;font-weight:650;letter-spacing:-1px}.brand span{font-weight:350;color:#b8d6c6}header small{display:block;color:#bed0c7;margin-top:6px}.tag{font-size:11px;letter-spacing:1px;border:1px solid #739385;border-radius:20px;padding:8px 12px;white-space:nowrap}main{max-width:1200px;margin:auto;padding:24px 20px 40px}.intro{display:flex;justify-content:space-between;gap:18px;align-items:center}h1{font-size:29px;letter-spacing:-1px;margin:8px 0}p{line-height:1.6}.muted{color:#60766e}.intro p{margin:6px 0 18px}.tabs{display:flex;gap:6px;margin:16px 0}.tabs button{border:0;background:transparent}.tabs button[aria-selected=true]{background:#dbe9df;font-weight:650}.banner{background:#e5ece6;border-radius:9px;padding:11px 14px;font-size:12px;line-height:1.6}.grid{display:grid;grid-template-columns:300px 1fr;gap:18px;margin-top:18px}.card{background:white;border:1px solid #dae2db;border-radius:12px;overflow:hidden}.pad{padding:20px}.eyebrow{font-size:10px;letter-spacing:1.7px;text-transform:uppercase;color:#688176;font-weight:700}h2{font-size:20px;margin:7px 0 14px}.toolbar{display:flex;gap:8px;flex-wrap:wrap}.toolbar input{min-width:0;flex:1}.toolbar select{max-width:100%}.runs{padding:8px}.run{display:block;width:100%;text-align:left;border:0;border-radius:8px;margin:4px 0;padding:15px;background:white}.run[aria-pressed=true]{background:#e7f1e9;box-shadow:inset 3px 0 #277861}.run strong{display:block;font-size:14px}.run small{display:block;color:#62786d;margin:7px 0}.badge{display:inline-block;font-size:10px;border-radius:20px;padding:4px 8px;background:#e5eee7;color:#256449}.badge.review{color:#90601c;background:#fff0d5}.badge.flagged{color:#a34741;background:#fce7e1}.detailhead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0 20px}.metric{background:#f5f7f3;border-radius:8px;padding:14px}.metric strong{display:block;font-size:23px;margin:8px 0 5px;font-weight:550;font-variant-numeric:tabular-nums}.metric small{font-size:11px;color:#647b6f}.chart{width:100%;height:230px;display:block;background:#fcfdfb;border:1px solid #e3e9e2;border-radius:9px}.chartbar{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}.check{display:flex;gap:8px;align-items:center;font-size:12px}.legend{font-size:11px;color:#687b72}.metadata{display:grid;grid-template-columns:1fr 1fr;gap:0 24px;margin-top:16px}.pair{padding:12px 0;border-bottom:1px solid #e5ebe4;min-width:0}.pair span{display:block;font-size:11px;color:#6b7e74;margin-bottom:5px}.pair b{font-size:12px;font-weight:550;overflow-wrap:anywhere}.storage{margin-top:20px;padding:15px;background:#f2f5ef;border-radius:8px}.storage p{font-size:12px;margin:8px 0 0}.storage .toolbar{align-items:center;justify-content:space-between}.roadmap{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:18px}.roadmap article{padding:22px}.roadmap h3{margin:7px 0 10px}.roadmap p{color:#567062;font-size:13px}.roadmap code{font-size:12px;display:block;white-space:normal;overflow-wrap:anywhere;background:#f0f5ef;padding:12px;border-radius:7px}.foot{font-size:12px;color:#63786e;margin-top:18px}.empty{padding:30px;text-align:center;color:#68796e}dialog{border:1px solid #d2ddd4;border-radius:14px;width:min(440px,95vw);padding:24px;color:#183d39}dialog::backdrop{background:#193a3366}form label{display:block;margin:15px 0}form label input{display:block;width:100%;margin-top:6px}.error{color:#a33c34;font-size:12px}[hidden]{display:none!important}@media(max-width:800px){.grid{grid-template-columns:1fr}.runs{display:flex;overflow-x:auto}.run{min-width:210px}.roadmap{grid-template-columns:1fr}.intro{align-items:flex-start}.metrics{gap:6px}.metric{padding:10px}.metric strong{font-size:19px}header{padding:18px}.tag{display:none}.metadata{gap:0 12px}main{padding:16px 12px}}
+</style></head>
+<body>
+<header><div class="brand">loom <span>/ science</span><small>Results with context. Data you can trace.</small></div><span class="tag">INTERACTIVE LAB PREVIEW</span></header>
+<main>
+<div class="intro"><div><div class="eyebrow">Scientific workspace</div><h1>Thermal characterization</h1><p class="muted">Explore runs, inspect quality and trace a measurement back to its source.</p></div><button class="primary" id="new">＋ Simulate run</button></div>
+<div class="banner">Browser-only demo · synthetic measurements · held in memory; reload resets everything. This previews proposed scientific features; it does not run the C# server.</div>
+<div class="tabs" role="tablist" aria-label="Workspace"><button id="resultsTab" role="tab" aria-selected="true" aria-controls="results">Results explorer</button><button id="designTab" role="tab" aria-selected="false" aria-controls="design">What I’d add to Loom</button></div>
+<section id="results" role="tabpanel" aria-labelledby="resultsTab">
+<div class="grid">
+<aside class="card"><div class="pad"><div class="eyebrow">Run catalog</div><h2 id="count">4 runs</h2><div class="toolbar"><input id="search" aria-label="Search runs" placeholder="Search run or instrument"><select id="quality" aria-label="Filter quality"><option value="All">All quality</option><option>Good</option><option>Review</option><option>Flagged</option></select></div></div><div id="runs" class="runs"></div></aside>
+<article class="card pad" id="detail">
+<div class="detailhead"><div><div class="eyebrow" id="runid"></div><h2 id="title"></h2></div><select id="unit" aria-label="Temperature display unit"><option value="C">Celsius · °C</option><option value="K">Kelvin · K</option></select></div>
+<div class="metrics"><div class="metric"><span class="eyebrow">Mean</span><strong id="mean"></strong><small id="meanNote"></small></div><div class="metric"><span class="eyebrow">Uncertainty</span><strong id="uncertainty"></strong><small>Stated standard u · k = 1</small></div><div class="metric"><span class="eyebrow">Samples used</span><strong id="samples"></strong><small id="sampleNote"></small></div></div>
+<div class="chartbar"><b>Temperature trace</b><label class="check"><input type="checkbox" id="exclude" checked> Exclude flagged samples</label></div>
+<canvas id="plot" class="chart" aria-label="Temperature versus elapsed time"></canvas>
+<div class="chartbar"><span class="legend">Teal: accepted samples · red: flagged samples</span><label class="check">Inspect sample <input id="cursor" type="range" min="0" max="511" value="100" aria-label="Inspect sample"></label></div>
+<div class="banner" id="readout" aria-live="polite"></div>
+<div class="metadata" id="metadata"></div>
+<div class="storage"><div class="toolbar"><b>Binary waveform · <span id="rawsize"></span></b><button id="compress">Test lossless compression</button></div><p id="compression" role="status">512 signed int32 samples, little-endian; scale 0.001 °C/count. Compression is measured on actual bytes.</p></div>
+<p class="foot">Changing display units preserves the original counts and °C metadata. The uncertainty is a supplied demo value, not inferred from the trace or a confidence interval.</p>
+</article></div>
+</section>
+<section id="design" role="tabpanel" aria-labelledby="designTab" hidden>
+<div class="banner"><strong>My recommendation:</strong> build a scientific layer on Loom’s existing records, migrations and blob storage. Keep searchable metadata in the relational database; use typed array blobs or external stores for large datasets.</div>
+<div class="roadmap">
+<article class="card"><div class="eyebrow">01 / Highest priority</div><h3>Quantities, units and uncertainty</h3><p>A measurement needs a quantity kind, original unit and uncertainty definition. Convert only compatible dimensions. Treat temperature offsets correctly, and keep standard uncertainty distinct from tolerance and expanded uncertainty.</p><code>Quantity&lt;Temperature&gt; · value · unit · uncertaintyKind · u · coverageFactor</code></article>
+<article class="card"><div class="eyebrow">02 / Traceability</div><h3>Runs and provenance</h3><p>Link results to instrument serial number, calibration revision, procedure, specimen, operator and software version. A derived result points to its input records and processing parameters; raw data stays unchanged.</p><code>Result → Run → Instrument + Calibration + Procedure<br>DerivedResult → InputIDs + AlgorithmVersion + Parameters</code></article>
+<article class="card"><div class="eyebrow">03 / Efficient data</div><h3>Typed arrays and chunked storage</h3><p>Store shape, axes, units, numeric type, byte order, scaling and missing-value rules with the bytes. Add chunk-level compression and checksums for partial reads. Support IEEE floating point for measurements; retain decimal for money.</p><code>dtype: int32 · endian: little · shape: [512]<br>scale: 0.001 °C/count · axis: elapsed seconds</code></article>
+<article class="card"><div class="eyebrow">04 / Time and quality</div><h3>Explicit timing and quality masks</h3><p>Record the time scale, epoch, timestamp resolution, clock source and synchronization uncertainty. Support irregular sample times, gaps, saturation and invalid samples. Filtering changes the analysis selection, never the raw record.</p><code>t₀ + Δt, or timestamp array · timeScale · clockID<br>quality: valid / missing / saturated / suspect</code></article>
+<article class="card"><div class="eyebrow">05 / Scientific interchange</div><h3>External datasets and export</h3><p>Extend URI references with dataset path, channel, time range, revision and credentials stored separately. Add adapters for HDF5/NeXus and chosen time-series systems. Import/export should preserve units, axes and provenance.</p><code>DatasetRef(provider, uri, path, revision, channels, timeRange)</code></article>
+<article class="card"><div class="eyebrow">06 / Honest status</div><h3>What exists versus this preview</h3><p>Loom v0.12 has scalar fields, exact money, migrations, audit history, bounded blobs with transparent SQLite compression, and URI storage. The scientific quantity/array types, chunking, immutable raw-data policy and external-store adapters above are proposals—not implemented backend features.</p><code>This preview: filtering · units · quality masks · waveform inspection · real browser compression test</code></article>
+</div><p class="foot">Design references: <a href="https://manual.nexusformat.org/classes/base_classes/NXdata.html" target="_blank" rel="noopener">NeXus signals and axes</a> · <a href="https://www.nist.gov/pml/nist-technical-note-1297/nist-tn-1297-7-reporting-uncertainty" target="_blank" rel="noopener">NIST reporting uncertainty</a>. No external data is loaded by this demo.</p>
+</section>
+</main>
+<dialog id="dialog"><form id="form"><div class="eyebrow">Synthetic data generator</div><h2>Simulate a test run</h2><label>Run name<input id="name" required maxlength="80" value="Thermal repeat"></label><label>Nominal temperature (°C)<input id="nominal" type="number" min="-100" max="100" step="0.001" value="24.5" required></label><label>Stated standard uncertainty (°C)<input id="u" type="number" min="0" max="10" step="0.001" value="0.025" required></label><p class="muted">Generates 512 illustrative samples. No instrument is connected.</p><div class="toolbar"><button class="primary" type="submit">Create simulated run</button><button id="cancel" type="button">Cancel</button></div></form></dialog>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+let runs=[],selected='RUN-001',compressionToken=0;
+function makeRun(n,name,nominal,quality='Good',u=.025){
+ const raw=Array.from({length:512},(_,i)=>Math.round((nominal+.055*Math.sin(i/24)+.012*Math.sin(i/3)+.018*i/511)*1000));
+ const bad=quality==='Good'?[]:Array.from({length:quality==='Flagged'?18:6},(_,j)=>190+j);
+ bad.forEach(i=>raw[i]+=quality==='Flagged'?360:120);
+ return {id:'RUN-'+String(n).padStart(3,'0'),name,quality,u,raw,bad,dt:.01,instrument:n%2?'RTD-042':'RTD-017',calibration:n%2?'CAL-2026-018 / rev 2':'CAL-2026-021 / rev 1',started:'2026-10-14T'+String(8+n%12).padStart(2,'0')+':00:00.000Z'};
+}
+runs=[makeRun(1,'Baseline / chamber A',23.4),makeRun(2,'Warm hold / chamber A',26.2,'Review'),makeRun(3,'Sensor disturbance',24.8,'Flagged',.04),makeRun(4,'Repeatability / chamber B',23.45)];
+function active(){return runs.find(r=>r.id===selected)}
+function unit(){return $('unit').value==='K'?'K':'°C'}
+function display(count){return count/1000+($('unit').value==='K'?273.15:0)}
+function el(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e}
+function filtered(){const q=$('search').value.toLowerCase();return runs.filter(r=>(r.name+' '+r.id+' '+r.instrument).toLowerCase().includes(q)&&($('quality').value==='All'||r.quality===$('quality').value))}
+function catalog(){
+ const rows=filtered();$('count').textContent=rows.length+' of '+runs.length+' runs';$('runs').replaceChildren();
+ if(!rows.some(r=>r.id===selected))selected=rows[0]?.id;
+ $('detail').hidden=!rows.length;
+ if(!rows.length){$('runs').append(el('p','No matching runs. Clear the filters.','empty'));compressionToken++;return}
+ for(const r of rows){const b=el('button',undefined,'run');b.setAttribute('aria-pressed',r.id===selected);b.append(el('strong',r.name),el('small',r.id+' · '+r.instrument),el('span',r.quality+(r.bad.length?' · '+r.bad.length+' flagged':''),'badge '+r.quality.toLowerCase()));b.onclick=()=>{selected=r.id;catalog()};$('runs').append(b)}detail();
+}
+function detail(){
+ const r=active();if(!r)return;compressionToken++;$('compress').disabled=false;$('compression').textContent='512 signed int32 samples, little-endian; scale 0.001 °C/count. Compression is measured on actual bytes.';
+ $('title').textContent=r.name;$('runid').textContent=r.id+' / simulated acquisition';
+ const values=r.raw.filter((_,i)=>!$('exclude').checked||!r.bad.includes(i));
+ $('mean').textContent=display(values.reduce((a,b)=>a+b,0)/values.length).toFixed(3)+' '+unit();$('meanNote').textContent='Arithmetic mean of selected samples';
+ $('uncertainty').textContent='± '+r.u.toFixed(3)+' '+unit();$('samples').textContent=values.length+' / 512';$('sampleNote').textContent=r.bad.length+' quality flags · 100 samples/s';$('rawsize').textContent=(r.raw.length*4).toLocaleString()+' bytes';
+ $('metadata').replaceChildren();
+ const pairs=[['Instrument / calibration',r.instrument+' · '+r.calibration],['Procedure / software','THERM-004 rev C · acquisition-demo 1.0'],['Start time / time scale',r.started+' · UTC'],['Sample coordinates','Δt = 0.01 s · shape [512] · last sample 5.11 s'],['Original representation','int32 LE · 0.001 °C/count · no offset'],['External reference (not fetched)','tsdb://example.test/thermal/'+r.id+'/temperature']];
+ for(const [k,v]of pairs){const p=el('div',undefined,'pair');p.append(el('span',k),el('b',v));$('metadata').append(p)}draw();
+}
+function draw(){
+ const r=active();if(!r||$('results').hidden||$('detail').hidden)return;
+ const canvas=$('plot'),w=canvas.clientWidth||650,h=230,dpr=window.devicePixelRatio||1;canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+ const left=58,right=w-16,top=22,bottom=h-36;
+ const vals=r.raw.map(display),lo=Math.min(...vals)-.04,hi=Math.max(...vals)+.04;
+ const x=i=>left+i/511*(right-left),y=v=>bottom-(v-lo)/(hi-lo)*(bottom-top);
+ ctx.font='11px system-ui';ctx.fillStyle='#657b70';ctx.strokeStyle='#e4ebe4';ctx.lineWidth=1;
+ for(let i=0;i<5;i++){const v=lo+(hi-lo)*i/4,yy=y(v);ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(right,yy);ctx.stroke();ctx.fillText(v.toFixed(2),3,yy+4)}
+ for(let i=0;i<6;i++){const xx=left+(right-left)*i/5;ctx.fillText((5.11*i/5).toFixed(2),xx-12,bottom+18)}ctx.fillText(unit(),6,14);ctx.fillText('Elapsed time (s)',Math.max(left,(w-90)/2),h-3);
+ ctx.strokeStyle='#26765e';ctx.lineWidth=1.8;ctx.beginPath();let connected=false;
+ vals.forEach((v,i)=>{if($('exclude').checked&&r.bad.includes(i)){connected=false;return}if(connected)ctx.lineTo(x(i),y(v));else ctx.moveTo(x(i),y(v));connected=true});ctx.stroke();
+ ctx.fillStyle='#bd6251';for(const i of r.bad){ctx.beginPath();ctx.arc(x(i),y(vals[i]),2.3,0,Math.PI*2);ctx.fill()}
+ const idx=Number($('cursor').value);ctx.setLineDash([3,4]);ctx.strokeStyle='#9c8150';ctx.beginPath();ctx.moveTo(x(idx),top);ctx.lineTo(x(idx),bottom);ctx.stroke();ctx.setLineDash([]);
+ $('readout').textContent='Sample '+idx+' · t = '+(idx*r.dt).toFixed(2)+' s · '+vals[idx].toFixed(3)+' '+unit()+' · '+(r.bad.includes(idx)?'FLAGGED'+($('exclude').checked?' — excluded from mean':' — included in mean'):'valid');
+}
+$('search').oninput=catalog;$('quality').onchange=catalog;$('unit').onchange=detail;$('exclude').onchange=detail;$('cursor').oninput=draw;window.addEventListener('resize',draw);
+function tab(design){$('results').hidden=design;$('design').hidden=!design;$('resultsTab').setAttribute('aria-selected',!design);$('designTab').setAttribute('aria-selected',design);if(!design)draw()}
+$('resultsTab').onclick=()=>tab(false);$('designTab').onclick=()=>tab(true);
+$('new').onclick=()=>$('dialog').showModal();$('cancel').onclick=()=>$('dialog').close();
+$('form').onsubmit=e=>{e.preventDefault();const name=$('name').value.trim();if(!name){$('name').setCustomValidity('Enter a run name');$('name').reportValidity();return}const r=makeRun(runs.length+1,name,Number($('nominal').value),'Good',Number($('u').value));runs.push(r);selected=r.id;$('search').value='';$('quality').value='All';$('dialog').close();tab(false);catalog()};$('name').oninput=()=>$('name').setCustomValidity('');
+$('compress').onclick=async()=>{
+ const r=active();if(!r)return;const token=++compressionToken;$('compress').disabled=true;
+ if(!globalThis.CompressionStream||!globalThis.DecompressionStream){$('compression').textContent='This browser does not expose compression streams. Raw data remains available; no size estimate is fabricated.';$('compress').disabled=false;return}
+ $('compression').textContent='Compressing, decompressing and comparing every byte…';
+ try{const buffer=new ArrayBuffer(r.raw.length*4),view=new DataView(buffer);r.raw.forEach((v,i)=>view.setInt32(i*4,v,true));const raw=new Uint8Array(buffer);
+ const compressed=await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer();
+ const restored=new Uint8Array(await new Response(new Blob([compressed]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
+ if(raw.length!==restored.length||!raw.every((v,i)=>v===restored[i]))throw Error('Byte comparison failed');
+ if(token!==compressionToken)return;
+ $('compression').textContent='Verified byte-for-byte: '+raw.length+' → '+compressed.byteLength+' bytes ('+(100*(1-compressed.byteLength/raw.length)).toFixed(1)+'% smaller). Browser test uses gzip; Loom’s SQLite provider uses Brotli/raw envelopes.';
+ }catch(e){if(token===compressionToken)$('compression').textContent='Compression test failed: '+e.message}finally{if(token===compressionToken)$('compress').disabled=false}
+};
+catalog();
+</script></body></html>
