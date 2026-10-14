@@ -1,7 +1,7 @@
 """Small standard-library launcher; MSBuild owns the build graph.
 Python 3.11+ is the bootstrap prerequisite. Installs are local to .tools.
 """
-import argparse,hashlib,json,os,platform,shutil,subprocess,sys,tarfile,tempfile,urllib.request,zipfile
+import argparse,hashlib,json,os,platform,re,shutil,subprocess,sys,tarfile,tempfile,urllib.request,zipfile
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 MANIFEST=json.loads((ROOT/'build/toolchains.json').read_text())
@@ -77,6 +77,7 @@ def main():
     parser.add_argument('--database',action='store_true',help='Check Docker availability')
     parser.add_argument('--version',default='0.12.0-alpha.1')
     args=parser.parse_args()
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.-]+)?",args.version):parser.error("Use a semantic release version")
     if args.command=='setup':
         install('dotnet')
         if args.browser:

@@ -8,7 +8,7 @@ var directory=Path.Combine(Path.GetTempPath(),"loom-start-"+Guid.NewGuid().ToStr
 Directory.CreateDirectory(directory);
 try
 {
-    using var store=new SqliteStore("Data Source="+Path.Combine(directory,"example.db"));
+    using var store=new SqliteStore("Pooling=False;Data Source="+Path.Combine(directory,"example.db"));
     var actor=new Actor("getting-started","Admin");
     var v1=AttributeCatalog.From(typeof(InstrumentV1));
     store.Migrate(v1);

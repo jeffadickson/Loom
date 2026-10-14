@@ -9,7 +9,7 @@ static class ReportDesignTests
   var type=catalog.Get("Asset");var field=type.Fields.Single(f=>f.Name=="tag");var admin=new Actor("a","Admin");
   var design=new ReportDesign(0,new SavedReport("Equipment",type.Id!,[new(field.Id!,"Serial",40,"center")]),new ReportLayout("Equipment",HeaderBlocks:[new ReportTextBlock("abababababababababababababababab","Count: ",Source:"count")],FontSize:16,Font:"serif",Footer:"Internal",Orientation:"portrait"));
   var path=Path.Combine(temp,"layouts.db");
-  using(var store=new SqliteStore("Data Source="+path))
+  using(var store=new SqliteStore("Pooling=False;Data Source="+path))
   {
    store.Migrate(catalog);Check(store.ReadReportDesign(type.Id!)==null,"no saved layout uses default");
    Reject(403,()=>store.SaveReportDesign(type.Id!,design,new Actor("v","Viewer")),"save authorization");
@@ -33,7 +33,7 @@ static class ReportDesignTests
    var html=ReportWriter.Write(persisted.Definition,persisted.Layout,next,new DocumentService(next,store,[]),admin);
    Check(html.Contains("Georgia,serif")&&html.Contains("size:A4 portrait")&&html.Contains("Internal"),"saved typography orientation footer rendered");
   }
-  using(var store=new SqliteStore("Data Source="+path))
+  using(var store=new SqliteStore("Pooling=False;Data Source="+path))
   {var loaded=store.ReadReportDesign(type.Id!)!;Check(loaded.Layout.HeaderBlocks![0].Source=="count"&&loaded.Version==1&&loaded.Definition.Columns[0].Width==40&&loaded.Definition.Columns[0].Alignment=="center","saved layout survives reopen");}
   return count;
  }

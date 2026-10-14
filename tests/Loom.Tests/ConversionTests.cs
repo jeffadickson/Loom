@@ -13,7 +13,7 @@ static class ConversionTests
   var initial=new Catalog([new DocType("Reading","Readings",1,"name",false,[new Field("name","Name","Text",Required:true),new Field("value","Value","Integer")],new(){{"Admin",["read","create","write","audit"]}})]);
   var field=initial.Get("Reading").Fields.Single(f=>f.Name=="value");
   Catalog Change(Catalog source,string type,bool required=false,string name="value")=>new(source.Types.Values.Select(t=>t with{Version=t.Version+1,Fields=t.Fields.Select(f=>f.Id==field.Id?f with{Type=type,Required=required,Name=name}:f).ToArray()}));
-  var cs="Data Source="+Path.Combine(temp,"conversions.db");
+  var cs="Pooling=False;Data Source="+Path.Combine(temp,"conversions.db");
   void Sql(string sql){using var db=new SqliteConnection(cs);db.Open();using var c=db.CreateCommand();c.CommandText=sql;c.ExecuteNonQuery();}
   using(var store=new SqliteStore(cs))
   {

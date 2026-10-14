@@ -13,7 +13,7 @@ static class MeasurementTests
         var catalog=AttributeCatalog.From(typeof(TemperatureRun));var actor=new Actor("scientist","Admin");
         foreach(var name in new[]{"Memory","SQLite"})
         {
-            using IDocumentStore store=name=="Memory"?new MemoryStore():new SqliteStore("Data Source="+Path.Combine(temp,"measurements.db"));
+            using IDocumentStore store=name=="Memory"?new MemoryStore():new SqliteStore("Pooling=False;Data Source="+Path.Combine(temp,"measurements.db"));
             store.Migrate(catalog);var service=new DocumentService(catalog,store,[]);var repo=service.Repository<TemperatureRun>(actor);
             var m=new Measurement(new Quantity(25,Units.Celsius),.1);
             var doc=repo.Create(new(){Name="Thermal run",Temperature=m});
@@ -31,7 +31,7 @@ static class MeasurementTests
                 catch(LoomException e){Check(e.Status==422,name+" malformed measurement rejected");}
             }
         }
-        using(var reopened=new SqliteStore("Data Source="+Path.Combine(temp,"measurements.db")))
+        using(var reopened=new SqliteStore("Pooling=False;Data Source="+Path.Combine(temp,"measurements.db")))
         {
             reopened.Migrate(catalog);var service=new DocumentService(catalog,reopened,[]);
             Check(service.Repository<TemperatureRun>(actor).List().Items[0].Value.Temperature!.Value.Unit==Units.Celsius,"SQLite reopen retains units");

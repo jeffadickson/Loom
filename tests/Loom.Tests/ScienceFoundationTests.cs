@@ -41,7 +41,7 @@ static class ScienceFoundationTests
         foreach(var provider in new[]{"memory","sqlite"})
         {
             var model=new DocType("RawRun","Raw run",1,"Name",false,[new("Name","Name","Text",Required:true,MaxLength:12,Default:"Untitled"),new("Count","Count","Integer",Minimum:0,Maximum:10)],new(){["Admin"]=["read","create","write","delete","audit"]},Immutable:true);
-            var catalog=new Catalog([model]);using IDocumentStore store=provider=="memory"?new MemoryStore():new SqliteStore("Data Source="+Path.Combine(temp,"raw-"+provider+".db"));store.Migrate(catalog);
+            var catalog=new Catalog([model]);using IDocumentStore store=provider=="memory"?new MemoryStore():new SqliteStore("Pooling=False;Data Source="+Path.Combine(temp,"raw-"+provider+".db"));store.Migrate(catalog);
             var service=new DocumentService(catalog,store,[]);var actor=new Actor("scientist","Admin");
             var raw=service.Create("RawRun",new(){["Count"]=5},actor);Check(raw.Values["Name"]!.ToString()=="Untitled",provider+" future create default");
             Reject(()=>service.Update("RawRun",raw.Id,1,new(){["Name"]="changed"},actor),provider+" immutable update refused");

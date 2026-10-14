@@ -31,7 +31,7 @@ static class DataTypeTests
   var cat=AttributeCatalog.From(typeof(TypedResult));
   foreach(var provider in new[]{"Memory","Sqlite"})
   {
-   using IDocumentStore store=provider=="Memory"?new MemoryStore():new SqliteStore("Data Source="+Path.Combine(temp,"datatypes.db"));store.Migrate(cat);
+   using IDocumentStore store=provider=="Memory"?new MemoryStore():new SqliteStore("Pooling=False;Data Source="+Path.Combine(temp,"datatypes.db"));store.Migrate(cat);
    var service=new DocumentService(cat,store,[]);var repo=service.Repository<TypedResult>(actor);
    var doc=repo.Create(new(){Name="Run",Cost=12.34m,EuroCost=9.87m,Payload=bytes,Series=new Uri("tsdb://example.test/run/1"),Counter=9007199254740993});
    Check(repo.Get(doc.Id).Value.Payload!.SequenceEqual(bytes)&&repo.Get(doc.Id).Value.Cost==12.34m,provider+" typed binary/money roundtrip");
@@ -48,14 +48,14 @@ static class DataTypeTests
    Reject(()=>repo.Create(new(){Name="BadURI",Series=new Uri("file:///tmp/test")}),provider+" URI scheme validation");
    var empty=repo.Create(new(){Name="Empty",Payload=[]});Check(repo.Get(empty.Id).Value.Payload!.Length==0,provider+" empty differs from null");
   }
-  using(var db=new SqliteConnection("Data Source="+Path.Combine(temp,"datatypes.db"))){db.Open();using var c=db.CreateCommand();c.CommandText="SELECT typeof(Payload), length(Payload) FROM TypedResult WHERE Name='Run'";using var reader=c.ExecuteReader();reader.Read();Check(reader.GetString(0)=="blob"&&reader.GetInt64(1)<1024,"SQLite physical blob is compressed");}
-  using(var db=new SqliteConnection("Data Source="+Path.Combine(temp,"datatypes.db"))){db.Open();using var c=db.CreateCommand();c.CommandText="SELECT typeof(json) FROM _audit LIMIT 1";Check((string)c.ExecuteScalar()! == "blob","audit snapshots use compressed envelopes");}
+  using(var db=new SqliteConnection("Pooling=False;Data Source="+Path.Combine(temp,"datatypes.db"))){db.Open();using var c=db.CreateCommand();c.CommandText="SELECT typeof(Payload), length(Payload) FROM TypedResult WHERE Name='Run'";using var reader=c.ExecuteReader();reader.Read();Check(reader.GetString(0)=="blob"&&reader.GetInt64(1)<1024,"SQLite physical blob is compressed");}
+  using(var db=new SqliteConnection("Pooling=False;Data Source="+Path.Combine(temp,"datatypes.db"))){db.Open();using var c=db.CreateCommand();c.CommandText="SELECT typeof(json) FROM _audit LIMIT 1";Check((string)c.ExecuteScalar()! == "blob","audit snapshots use compressed envelopes");}
   // Each migration executes the real SQLite rebuild, not just scalar helpers.
   int scenario=0;
   void ConvertCase(string from,string value,Field target,string expected,bool reject=false)
   {
    var source=new Catalog([new DocType("Sample","Samples",1,"name",false,[new("name","Name","Text",Required:true),new("v","Value",from,Options:from=="Select"?["A","B"]:null)],new(){{"Admin",["read","create","write","audit"]}})]);
-   using var store=new SqliteStore("Data Source="+Path.Combine(temp,"cast"+(scenario++)+".db"));store.Migrate(source);var service=new DocumentService(source,store,[]);var document=service.Create("Sample",new JsonObject{["name"]="one",["v"]=value},actor);var old=source.Get("Sample");
+   using var store=new SqliteStore("Pooling=False;Data Source="+Path.Combine(temp,"cast"+(scenario++)+".db"));store.Migrate(source);var service=new DocumentService(source,store,[]);var document=service.Create("Sample",new JsonObject{["name"]="one",["v"]=value},actor);var old=source.Get("Sample");
    target=target with{Id=old.Fields[1].Id};var next=new Catalog([old with{Version=2,Fields=[old.Fields[0],target]}]);
    if(reject){Reject(()=>store.Plan(next),from+" to "+target.Type+" refuses "+value);Check(service.Get("Sample",document.Id,actor).Values["v"]!.ToString()==value,"failed cast preserves source");return;}
    var plan=store.Plan(next);var accepted=store.Apply(plan.Id,actor);Check(new DocumentService(accepted,store,[]).Get("Sample",document.Id,actor).Values["v"]!.ToString()==expected,from+" to "+target.Type+" migration "+value);
@@ -71,7 +71,7 @@ static class DataTypeTests
   ConvertCase("Text","12.345",money with{Name="v",Rounding="even"},"12.34");
   ConvertCase("Decimal","12.345",new("v","V","Decimal",Precision:10,Scale:2,Rounding:"away"),"12.35");
   ConvertCase("Decimal","12.345",new("v","V","Decimal",Precision:10,Scale:2),"",true);
-  using(var store=new SqliteStore("Data Source="+Path.Combine(temp,"datatypes.db")))
+  using(var store=new SqliteStore("Pooling=False;Data Source="+Path.Combine(temp,"datatypes.db")))
   {
    var old=store.ReadCatalog()!;var schema=old.Get("TypedResult");
    Catalog Change(Func<Field,Field> change)=>new([schema with{Version=2,Fields=schema.Fields.Select(change).ToArray()}]);

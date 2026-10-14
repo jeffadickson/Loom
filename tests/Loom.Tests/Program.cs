@@ -23,7 +23,7 @@ try
 {
     foreach(var provider in new[]{"Memory","Sqlite"})
     {
-        using IDocumentStore store = provider == "Memory" ? new MemoryStore() : new SqliteStore("Data Source="+Path.Combine(temp,"test.db"));
+        using IDocumentStore store = provider == "Memory" ? new MemoryStore() : new SqliteStore("Pooling=False;Data Source="+Path.Combine(temp,"test.db"));
         store.Migrate(catalog);
         var service = new DocumentService(catalog,store,[new WorkOrderHook()]);
         var asset = service.Create("Asset",Asset("A-001"),admin);
@@ -70,7 +70,7 @@ try
         Parallel.For(0,8,_=>{try{service.Update("Asset",asset.Id,1,values,admin);Interlocked.Increment(ref wins);}catch(LoomException e)when(e.Status==409){Interlocked.Increment(ref conflicts);}});
         Check(wins==1&&conflicts==7,provider+": concurrent writers cannot overwrite each other");
     }
-    using(var store=new SqliteStore("Data Source="+Path.Combine(temp,"test.db")))
+    using(var store=new SqliteStore("Pooling=False;Data Source="+Path.Combine(temp,"test.db")))
     {
         store.Migrate(catalog);var service=new DocumentService(catalog,store,[new WorkOrderHook()]);
         Check(service.List("Asset",admin).Total==1&&service.List("WorkOrder",admin).Total==1,"SQLite: persistence after reopening");

@@ -13,7 +13,7 @@ internal static class MigrationTests
         void Check(bool ok, string text) { if (!ok) throw new Exception(text); Console.WriteLine("PASS migration: " + text); count++; }
         void Block(Action action, string text)
         { try { action(); throw new Exception("Expected refusal: " + text); } catch (Exception e) when (e is LoomException or InvalidOperationException or SqliteException) { Check(true, text); } }
-        var path = Path.Combine(temp, "migration.db"); var cs = "Data Source=" + path;
+        var path = Path.Combine(temp, "migration.db"); var cs = "Pooling=False;Data Source=" + path;
         string assetId, workId, planId; Catalog accepted;
         using (var store = new SqliteStore(cs))
         {
@@ -72,8 +72,8 @@ internal static class MigrationTests
             Block(()=>reopened.Plan(c),"out-of-band physical column drift detected");
         }
         var legacy=Path.Combine(temp,"legacy.db");
-        using(var s=new SqliteStore("Data Source="+legacy))s.Migrate(original);
-        using(var db=new SqliteConnection("Data Source="+legacy))
+        using(var s=new SqliteStore("Pooling=False;Data Source="+legacy))s.Migrate(original);
+        using(var db=new SqliteConnection("Pooling=False;Data Source="+legacy))
         {
             db.Open();foreach(var d in original.Types.Values)
             {
@@ -81,10 +81,10 @@ internal static class MigrationTests
                 using var c=db.CreateCommand();c.CommandText="UPDATE _schemas SET json=$json WHERE name=$name";c.Parameters.AddWithValue("$json",v.ToJsonString());c.Parameters.AddWithValue("$name",d.Name);c.ExecuteNonQuery();
             }
         }
-        using(var s=new SqliteStore("Data Source="+legacy))
+        using(var s=new SqliteStore("Pooling=False;Data Source="+legacy))
         {
             s.Migrate(original);Check(s.ReadCatalog()!.Get("Asset").Fields.All(f=>f.Id!=null),"legacy exact-name adoption provides stable IDs");
-            using var db=new SqliteConnection("Data Source="+legacy);db.Open();using var c=db.CreateCommand();c.CommandText="SELECT json FROM _schemas WHERE name='Asset'";
+            using var db=new SqliteConnection("Pooling=False;Data Source="+legacy);db.Open();using var c=db.CreateCommand();c.CommandText="SELECT json FROM _schemas WHERE name='Asset'";
             Check(JsonSerializer.Deserialize<DocType>((string)c.ExecuteScalar()!,Catalog.Json)!.Fields.All(f=>f.Id!=null),"legacy adoption IDs are persisted");
         }
         return count;

@@ -10,7 +10,7 @@ static class QueryTests
         var schema=catalog.Get("QueryItem");var amount=schema.Fields[1];var actor=new Actor("query","Admin");
         foreach(var provider in new[]{"memory","sqlite"})
         {
-            using IDocumentStore store=provider=="memory"?new MemoryStore():new SqliteStore("Data Source="+Path.Combine(temp,"queries.db"));store.Migrate(catalog);var service=new DocumentService(catalog,store,[]);
+            using IDocumentStore store=provider=="memory"?new MemoryStore():new SqliteStore("Pooling=False;Data Source="+Path.Combine(temp,"queries.db"));store.Migrate(catalog);var service=new DocumentService(catalog,store,[]);
             foreach(var value in new[]{"10","2","9007199254740993","9007199254740992"})service.Create(schema.Name,new(){["Name"]="x'--",["Amount"]=value,["Flag"]=true},actor);
             service.Create(schema.Name,new(){["Name"]="empty"},actor);
             var page=service.Query(schema.Name,actor,new(amount.Id!,Skip:1,Take:2));Check(page.Total==5&&page.Items.Select(d=>d.Values["Amount"]!.ToString()).SequenceEqual(new[]{"2","10"}),provider+" exact numeric sort and null-first paging");
@@ -20,7 +20,7 @@ static class QueryTests
             try{service.Query(schema.Name,actor,new("Name"));throw new Exception("Unstable name accepted");}catch(LoomException e){Check(e.Status==400,provider+" query requires stable field identity");}
             try{service.Query(schema.Name,new("outsider","Viewer"),new(amount.Id!));throw new Exception("Authorization bypass");}catch(LoomException e){Check(e.Status==403,provider+" query authorization");}
         }
-        using(var store=new SqliteStore("Data Source=:memory:"))
+        using(var store=new SqliteStore("Pooling=False;Data Source=:memory:"))
         {
             store.Migrate(catalog);
             store.Transaction(session=>

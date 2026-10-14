@@ -10,7 +10,7 @@ static class BackfillTests
   int count=0;var admin=new Actor("backfill-admin","Admin");
   void Check(bool ok,string message){if(!ok)throw new Exception(message);count++;Console.WriteLine("PASS backfill: "+message);}
   void Reject(Action action,string message){try{action();throw new Exception("Expected refusal");}catch(Exception e)when(e is LoomException or InvalidOperationException or SqliteException){Check(true,message);}}
-  var path=Path.Combine(temp,"backfills.db");var cs="Data Source="+path;
+  var path=Path.Combine(temp,"backfills.db");var cs="Pooling=False;Data Source="+path;
   void Sql(string sql){using var db=new SqliteConnection(cs);db.Open();using var c=db.CreateCommand();c.CommandText=sql;c.ExecuteNonQuery();}
   string assetId;
   using(var store=new SqliteStore(cs))

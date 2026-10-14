@@ -13,7 +13,7 @@ static class RequiredFieldTests
   var source=new Catalog([new DocType("Item","Items",1,"name",false,[new Field("name","Name","Text",Required:true),new Field("site","Site","Text"),new Field("enabled","Enabled","Boolean"),new Field("amount","Amount","Integer")],new(){{"Admin",["read","create","write","audit"]}})]);
   var item=source.Get("Item");var site=item.Fields.Single(f=>f.Name=="site");
   Catalog Target(bool rename=false)=>new([item with{Version=2,Fields=item.Fields.Select(f=>f.Id==site.Id?f with{Required=true,Name=rename?"campus":"site"}:f).ToArray()}]);
-  var path=Path.Combine(temp,"required.db");var cs="Data Source="+path;
+  var path=Path.Combine(temp,"required.db");var cs="Pooling=False;Data Source="+path;
   void Sql(string sql){using var db=new SqliteConnection(cs);db.Open();using var c=db.CreateCommand();c.CommandText=sql;c.ExecuteNonQuery();}
   using(var store=new SqliteStore(cs))
   {
@@ -43,7 +43,7 @@ static class RequiredFieldTests
    Check(service.Get("Item",missing.Id,actor).Values["enabled"]!.GetValue<bool>()&&service.Get("Item",missing.Id,actor).Values["amount"]!.GetValue<long>()==99,"Boolean and Integer nulls are backfilled");
   }
   using(var reopened=new SqliteStore(cs)){var next=reopened.ReadCatalog()!;Check(next.Get("Item").Fields.Single(f=>f.Name=="campus").Required,"required constraint survives reopen");}
-  using(var store=new SqliteStore("Data Source="+Path.Combine(temp,"complete.db")))
+  using(var store=new SqliteStore("Pooling=False;Data Source="+Path.Combine(temp,"complete.db")))
   {
    store.Migrate(source);var service=new DocumentService(source,store,[]);
    service.Create("Item",new JsonObject{["name"]="Complete",["site"]="West"},actor);

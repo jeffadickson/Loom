@@ -19,7 +19,7 @@ static class AuthoringReportTests
         var actor = new Actor("test", "Admin");
         try
         {
-            using (var store = new SqliteStore("Data Source=" + path))
+            using (var store = new SqliteStore("Pooling=False;Data Source=" + path))
             {
                 store.Migrate(catalog); var service = new DocumentService(catalog, store, []);
                 service.Create("Asset", new JsonObject { ["name"]="Scope", ["tag"]="TEST-1", ["category"]="Electronics", ["location"]="Lab", ["active"]=true }, actor);
@@ -38,7 +38,7 @@ static class AuthoringReportTests
                 try { SavedReports.Run(report with {Columns=[new(Guid.NewGuid().ToString("N"))]},catalog,service,actor); throw new Exception("Expected invalid reference"); }
                 catch (LoomException e) { Check(e.Status == 422, "missing report identity fails explicitly"); }
             }
-            using (var reopened = new SqliteStore("Data Source="+path))
+            using (var reopened = new SqliteStore("Pooling=False;Data Source="+path))
             {
                 var accepted = reopened.ReadCatalog()!;
                 Check(SavedReports.Run(JsonSerializer.Deserialize<SavedReport>(serialized,Catalog.Json)!,accepted,new DocumentService(accepted,reopened,[]),actor).Total==1, "saved report survives database reopen");

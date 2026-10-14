@@ -1,3 +1,2 @@
 @echo off
-cd /d "%~dp0src\Loom.Demo"
-dotnet run -- --memory-demo
+python "%~dp0tools\dev.py" run

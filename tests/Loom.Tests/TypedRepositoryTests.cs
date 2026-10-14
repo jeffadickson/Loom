@@ -17,7 +17,7 @@ static class TypedRepositoryTests
         var admin = new Actor("typed-admin", "Admin");
         foreach (var provider in new[] {"Memory", "Sqlite"})
         {
-            using IDocumentStore store = provider == "Memory" ? new MemoryStore() : new SqliteStore("Data Source="+Path.Combine(directory,"typed.db"));
+            using IDocumentStore store = provider == "Memory" ? new MemoryStore() : new SqliteStore("Pooling=False;Data Source="+Path.Combine(directory,"typed.db"));
             store.Migrate(catalog);
             var service = new DocumentService(catalog,store,[new WorkOrderHook()]);
             var assets = service.Repository<AssetModel>(admin);
