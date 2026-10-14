@@ -4,6 +4,9 @@ Working name; independent project. Define records with C# attributes or JSON and
 
 ## Browser demos
 
+Start with [the interactive introduction](Loom_Introduction.html). Download it for a self-contained browser simulation, or run the memory demo and open `/introduction.html` for the same walkthrough using the real C# API. It includes model attributes, a generated form, exact-money validation, role checks, query paging and audit history.
+
+
 Download and open either self-contained HTML file in your browser:
 
 - [Scientific results preview](examples/browser/Loom_Science_Demo.html): synthetic thermal runs, quality masks, unit conversion, waveform inspection and a verified lossless compression test. Its scientific backend features are proposals, explicitly listed in the preview. This JavaScript preview does not run the C# framework.
@@ -281,3 +284,9 @@ dotnet run --project examples/Loom.Science
 ```
 
 See [SCIENTIFIC_DATA.md](docs/SCIENTIFIC_DATA.md). This is an in-process API; native quantity fields, persistence and generated UI integration remain issue #2.
+
+## Server demo hosts
+
+The demo host accepts `Database__Provider=PostgreSql` or `SqlServer` plus `Database__ConnectionString`. Use `--science-demo` to include scientific test results on a persistent provider; `--memory-demo` always selects disposable memory storage. Adding the scientific model to an existing server catalog is rejected until explicit schema migrations are implemented. Use a fresh database for this walkthrough. Provider changes do not move data.
+
+Build the standalone introduction from its served source with `python3 tools/build_introduction.py`. The served page uses external scripts to respect the host content-security policy; the standalone bundle embeds them and explicitly simulates storage.

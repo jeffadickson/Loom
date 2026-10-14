@@ -5,17 +5,21 @@ using System.Text.Json;
 using Loom.Demo.Models;
 using Loom.Core;
 using Loom.Sqlite;
+using Loom.Server;
+using Npgsql;
+using Microsoft.Data.SqlClient;
 using Loom.Demo;
 
 var builder = WebApplication.CreateBuilder(args);
 var root = builder.Environment.ContentRootPath;
 var memoryDemo=args.Contains("--memory-demo");
+var scienceDemo=memoryDemo||args.Contains("--science-demo");
 if(memoryDemo)builder.Configuration["Database:Provider"]="Memory";
 var modelSource = builder.Configuration["Models:Source"] ?? "Json";
 var codeModels = modelSource.Equals("CSharp", StringComparison.OrdinalIgnoreCase);
 if (!codeModels && !modelSource.Equals("Json", StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Models:Source must be Json or CSharp.");
 var catalog = codeModels ? AttributeCatalog.From(typeof(AssetModel), typeof(WorkOrderModel)) : Catalog.Load(Path.Combine(root, "Metadata"));
-if(memoryDemo)catalog=new Catalog(catalog.Types.Values.Concat(AttributeCatalog.From(typeof(TestResultModel)).Types.Values));
+if(scienceDemo)catalog=new Catalog(catalog.Types.Values.Concat(AttributeCatalog.From(typeof(TestResultModel)).Types.Values));
 if (args.Contains("--export-model")) { Console.WriteLine(JsonSerializer.Serialize(catalog.Types.Values, Catalog.Json)); return; }
 if (args.Contains("--generate"))
 {
@@ -30,7 +34,9 @@ IDocumentStore store = builder.Configuration["Database:Provider"]?.ToLowerInvari
 {
     "sqlite" => new SqliteStore(builder.Configuration["Database:ConnectionString"] ?? "Data Source=data/loom.db"),
     "memory" => new MemoryStore(),
-    _ => throw new InvalidOperationException("Unsupported provider. Implemented providers: Sqlite, Memory. No automatic fallback.")
+    "postgresql" => new ServerDocumentStore(new NpgsqlConnection(builder.Configuration["Database:ConnectionString"] ?? throw new InvalidOperationException("PostgreSQL requires Database:ConnectionString.")),ServerEngine.PostgreSql),
+    "sqlserver" => new ServerDocumentStore(new SqlConnection(builder.Configuration["Database:ConnectionString"] ?? throw new InvalidOperationException("SQL Server requires Database:ConnectionString.")),ServerEngine.SqlServer),
+    _ => throw new InvalidOperationException("Unsupported provider. Implemented providers: Sqlite, Memory, PostgreSql, SqlServer. No automatic fallback.")
 };
 var storedCatalog = (store as IMigrationStore)?.ReadCatalog();
 var applyModel = args.FirstOrDefault(a => a.StartsWith("--apply-model=", StringComparison.Ordinal));
@@ -74,7 +80,7 @@ if (storedCatalog == null && service.List("Asset", admin).Total == 0)
     service.Create("Asset", new JsonObject { ["name"] = "Environmental chamber", ["tag"] = "LAB-003", ["category"] = "Facilities", ["location"] = "Test facility", ["active"] = true }, admin);
     service.Create("WorkOrder", new JsonObject { ["title"] = "Annual calibration", ["asset"] = first.Id, ["priority"] = "High", ["due"] = "2026-11-02", ["hours"] = 3, ["rate"] = 125 }, admin);
 }
-if(memoryDemo)
+if(scienceDemo && service.List("TestResult",admin).Total==0)
 {
     var results=service.Repository<TestResultModel>(admin);
     results.Create(new(){Name="Thermal cycle • channel 1",Outcome="Pass",Temperature=new(new(25,Loom.Core.Science.Units.Celsius),.1),SampleCount=9007199254740993,Cost=1234.56m,Waveform=Enumerable.Range(0,4096).Select(i=>(byte)(i%16)).ToArray(),Series=new Uri("tsdb://example.test/thermal/run-001?channel=1")});

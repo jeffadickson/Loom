@@ -24,3 +24,16 @@ jobs:
         run: dotnet build tests/Loom.Generated.Tests --configuration Release
       - name: Run scientific quantity example
         run: dotnet run --project examples/Loom.Science --configuration Release
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test standalone and live introduction
+        env:
+          LOOM_CONFIGURATION: Release
+          NODE_PATH: /tmp/loom-browser/node_modules
+        run: |
+          python3 tools/build_introduction.py
+          git diff --exit-code -- Loom_Introduction.html
+          npm install --prefix /tmp/loom-browser playwright@1.51.1
+          /tmp/loom-browser/node_modules/.bin/playwright install --with-deps chromium
+          python3 tools/test_introduction.py

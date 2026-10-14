@@ -25,6 +25,14 @@ jobs:
       - run: dotnet run --project tests/Loom.Server.Tests -- postgres
         env:
           LOOM_TEST_CONNECTION: Host=localhost;Database=loom_test;Username=postgres;Password=loom-test-only
+      - name: Test configured PostgreSQL demo host and restart
+        env:
+          Database__Provider: PostgreSql
+          Database__ConnectionString: Host=localhost;Database=loom_demo;Username=postgres;Password=loom-test-only
+        run: |
+          docker exec '${{ job.services.postgres.id }}' psql -U postgres -c 'CREATE DATABASE loom_demo'
+          dotnet build src/Loom.Demo
+          python3 tools/test_server_demo.py
   sqlserver:
     runs-on: ubuntu-latest
     services:
@@ -42,10 +50,17 @@ jobs:
       - name: Wait for server and create isolated test database
         run: |
           for attempt in $(seq 1 30); do
-            if docker exec '${{ job.services.sqlserver.id }}' /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Loom_Test_Only_47!' -C -Q 'CREATE DATABASE loom_test'; then exit 0; fi
+            if docker exec '${{ job.services.sqlserver.id }}' /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Loom_Test_Only_47!' -C -Q 'CREATE DATABASE loom_test; CREATE DATABASE loom_demo'; then exit 0; fi
             sleep 2
           done
           exit 1
       - run: dotnet run --project tests/Loom.Server.Tests -- sqlserver
         env:
           LOOM_TEST_CONNECTION: Server=localhost;Database=loom_test;User Id=sa;Password=Loom_Test_Only_47!;TrustServerCertificate=True
+      - name: Test configured SQL Server demo host and restart
+        env:
+          Database__Provider: SqlServer
+          Database__ConnectionString: Server=localhost;Database=loom_demo;User Id=sa;Password=Loom_Test_Only_47!;TrustServerCertificate=True
+        run: |
+          dotnet build src/Loom.Demo
+          python3 tools/test_server_demo.py

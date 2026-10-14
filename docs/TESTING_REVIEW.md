@@ -45,3 +45,17 @@ The existing service-container smoke workflow remains as a separate gate while t
 - [NSubstitute callbacks](https://nsubstitute.github.io/help/callbacks/)
 - [Testcontainers PostgreSQL](https://dotnet.testcontainers.org/modules/postgres/)
 - [Testcontainers SQL Server](https://dotnet.testcontainers.org/modules/mssql/)
+
+## Introduction and configured demo hosts
+
+`tools/test_introduction.py` starts a disposable C# memory host and exercises both
+its `/introduction.html` page and the standalone `Loom_Introduction.html` with
+Playwright. Checks cover exact money and large integers, literal user text,
+validation rejection, denied Viewer writes, audit reads, filters and mobile width.
+The build workflow regenerates the standalone file and rejects a stale bundle.
+
+`tools/test_server_demo.py` verifies actual HTTP create/read/query/audit operations
+and a complete host restart against an isolated configured database. PostgreSQL
+and SQL Server service jobs run this in addition to repository conformance tests.
+The scientific seeds must not duplicate on restart. This test was also run locally
+against SQLite. Database configuration never silently falls back to memory.
