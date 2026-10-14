@@ -144,7 +144,7 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
     private JsonObject Validate(DocType schema, JsonObject input, IStoreSession session, string? id, Actor actor)
     {
         foreach (var key in input.Select(x => x.Key))
-            if (!schema.Fields.Any(f => f.Name == key && !f.ReadOnly)) throw new LoomException(400, "Unknown or read-only field: " + key);
+            if (!schema.Fields.Any(f => f.Name == key && (!f.ReadOnly || id != null && access?.CanWrite(f, actor) == false))) throw new LoomException(400, "Unknown or read-only field: " + key);
         var values = (JsonObject)input.DeepClone();
         if(id==null)foreach(var f in schema.Fields.Where(f=>f.Default!=null && !values.ContainsKey(f.Name)))values[f.Name]=f.Default;
         foreach (var hook in hooks.Where(h => h.Type == schema.Name)) hook.BeforeSave(values);

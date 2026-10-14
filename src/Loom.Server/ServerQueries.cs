@@ -34,6 +34,7 @@ internal static class ServerQueries
         string Value(Field field)
         {
             if (sqlServer && NumericType(field) != null) return "q_" + field.Id;
+            if (sqlServer && Text(field)) return "j.f_" + field.Id + " COLLATE Latin1_General_100_BIN2";
             var path=Parameter(sqlServer?"$.values."+field.Name:field.Name);
             var json=sqlServer?$"(SELECT v FROM OPENJSON(body) WITH (v nvarchar(max) '$.values.{field.Name}'))":$"(body::jsonb -> 'values' ->> {path})";
             if (Text(field)) return sqlServer ? $"({json} COLLATE Latin1_General_100_BIN2)" : $"(loom_ordinal({json}) COLLATE \"C\")";
@@ -51,8 +52,12 @@ internal static class ServerQueries
             var comparison = Text(field) ? (sqlServer ? $"({parameter} COLLATE Latin1_General_100_BIN2)" : $"(loom_ordinal({parameter}) COLLATE \"C\")") : "CAST("+parameter+" AS "+NumericType(field)+")";
             predicates.Add(value+op+comparison);
         }
-        var select="SELECT kind,id,version,body FROM loom_documents WHERE "+string.Join(" AND ",predicates);
-        int count=db.Documents.FromSqlRaw(select,parameters.ToArray()).Count();
+        var extract = sqlServer ? " OUTER APPLY OPENJSON(body) WITH (" + string.Join(",", schema.Fields.Where(Text).Select(f => $"f_{f.Id} nvarchar(max) '$.values.{f.Name}'")) + ") j" : "";
+        if (sqlServer && !schema.Fields.Any(Text)) extract = "";
+        var select="SELECT kind,id,version,body FROM loom_documents" + extract + " WHERE "+string.Join(" AND ",predicates);
+        int count;
+        try { count=db.Documents.FromSqlRaw(select,parameters.ToArray()).Count(); }
+        catch (System.Data.Common.DbException ex) { throw new InvalidOperationException("Provider query failed: " + select, ex); }
         var sort=Value(fields[query.SortFieldId]);var direction=query.Descending?"DESC":"ASC";
         var sql=select+$" ORDER BY CASE WHEN {sort} IS NULL THEN 0 ELSE 1 END {direction}, {sort} {direction}, id ASC";
         sql+=sqlServer?$" OFFSET {Parameter(query.Skip)} ROWS FETCH NEXT {Parameter(query.Take)} ROWS ONLY":$" LIMIT {Parameter(query.Take)} OFFSET {Parameter(query.Skip)}";
