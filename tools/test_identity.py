@@ -1,6 +1,7 @@
 """Real Identity UI/account lifecycle against an isolated persistent account database."""
 import os, subprocess, sys, tempfile, time, urllib.request, sqlite3
 from pathlib import Path
+from contextlib import closing
 root=Path(__file__).resolve().parents[1]
 dotnet=sys.argv[1] if len(sys.argv)>1 else 'dotnet'
 with tempfile.TemporaryDirectory() as tmp:
@@ -10,7 +11,7 @@ with tempfile.TemporaryDirectory() as tmp:
     setup=subprocess.run(command+['--identity-admin=admin@example.test'],cwd=root/'src/Loom.Demo',env=env,input='Admin-test-password-42!\n',text=True,capture_output=True)
     if setup.returncode:raise RuntimeError(setup.stdout+setup.stderr)
     # An unclaimed future delivery fixture exercises cancellation without racing the worker.
-    with sqlite3.connect(data/'accounts.db') as db:
+    with closing(sqlite3.connect(data/'accounts.db')) as db, db:
         now=int(time.time())
         db.execute('INSERT INTO LoomIdentityEmailOutbox (Id,ProtectedPayload,Status,CreatedAt,ExpiresAt,DueAt,LeaseUntil,Attempts) VALUES (?,?,?,?,?,?,?,?)',
             ('cancel-fixture','protected-fixture','Pending',now,now+4000,now+3600,0,0))
@@ -19,7 +20,7 @@ with tempfile.TemporaryDirectory() as tmp:
         if phase=='restart':env['Identity__AllowRegistration']='false'
         if phase=='rollback':
             env['Identity__AllowRegistration']='true'
-            with sqlite3.connect(data/'accounts.db') as db:
+            with closing(sqlite3.connect(data/'accounts.db')) as db, db:
                 db.execute("CREATE TRIGGER fail_email_queue BEFORE INSERT ON LoomIdentityEmailOutbox BEGIN SELECT RAISE(ABORT, 'queue unavailable'); END")
         logpath=Path(tmp)/(phase+'.log')
         with logpath.open('w') as log:
@@ -33,7 +34,7 @@ with tempfile.TemporaryDirectory() as tmp:
                 result=subprocess.run(['node',str(root/'tools/test_identity.cjs'),phase],env=env)
                 if result.returncode:raise RuntimeError('Identity browser test failed. Host log:\n'+logpath.read_text()[-12000:])
                 if phase=='restart':
-                    with sqlite3.connect(data/'accounts.db') as db:
+                    with closing(sqlite3.connect(data/'accounts.db')) as db, db:
                         assert db.execute("SELECT Status,ProtectedPayload FROM LoomIdentityEmailOutbox WHERE Id='cancel-fixture'").fetchone()==('Cancelled','')
 
             finally:host.terminate();host.wait(timeout=10)
