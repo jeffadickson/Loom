@@ -269,3 +269,15 @@ Alternatively run `run-memory-demo.cmd` on Windows or `./run-memory-demo.sh` on 
 New field types: `Money` (`decimal` plus fixed currency), `Binary` (`byte[]`), and `Uri` (`Uri` or decorated string). SQLite transparently compresses binary fields using a versioned Brotli/raw envelope; callers always receive the original bytes. The API and browser transport document numeric values as decimal strings to preserve all digits. C# repositories retain `long`/`decimal` properties.
 
 See [data types and storage](docs/DATA_TYPES.md) for exact conversion, rounding, size and compression contracts. The model designer's **Type settings** accepts these policies as JSON; normal record entry uses money inputs, file pickers and reference fields. The demo's attributed model is `src/Loom.Demo/Models/TestResultModel.cs`.
+
+## Scientific foundation and task tracker
+
+Remaining work is tracked in [GitHub issues](https://github.com/jeffadickson/Loom/issues), with a requirements-to-issue map in [BACKLOG.md](docs/BACKLOG.md).
+
+The first scientific C# layer adds immutable quantities with a bounded unit registry, dimension checks, absolute-temperature versus interval semantics, standard uncertainty and explicit coverage factors. Run it with:
+
+```sh
+dotnet run --project examples/Loom.Science
+```
+
+See [SCIENTIFIC_DATA.md](docs/SCIENTIFIC_DATA.md). This is an in-process API; native quantity fields, persistence and generated UI integration remain issue #2.

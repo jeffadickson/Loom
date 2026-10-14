@@ -9,7 +9,7 @@ var catalog = Catalog.Load(Path.Combine(root, "src/Loom.Demo/Metadata"));
 var admin = new Actor("alice", "Admin");
 var viewer = new Actor("bob", "Viewer");
 var editor = new Actor("charlie", "Editor");
-int count = AuthoringReportTests.Run(catalog) + ReportWriterTests.Run(catalog);
+int count = AuthoringReportTests.Run(catalog) + ReportWriterTests.Run(catalog) + ScienceTests.Run();
 void Check(bool condition, string message) { if (!condition) throw new Exception(message); Console.WriteLine("PASS " + message); count++; }
 void Reject(int status, Action action, string message)
 {

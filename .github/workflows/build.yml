@@ -18,3 +18,5 @@ jobs:
         run: dotnet run --project tests/Loom.Tests --configuration Release -- .
       - name: Run getting-started example
         run: dotnet run --project examples/Loom.GettingStarted --configuration Release
+      - name: Run scientific quantity example
+        run: dotnet run --project examples/Loom.Science --configuration Release

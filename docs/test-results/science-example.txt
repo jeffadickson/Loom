@@ -1,0 +1,6 @@
+25.000 degC; standard uncertainty 0.100 in the corresponding unit interval
+298.150 K; standard uncertainty 0.100 in the corresponding unit interval
+77.000 degF; standard uncertainty 0.180 in the corresponding unit interval
+Expanded uncertainty, k=2: 0.200 degC interval; no coverage probability inferred.
+Expected refusal: Cannot convert Temperature to Duration.
+Original remains: 25 degC

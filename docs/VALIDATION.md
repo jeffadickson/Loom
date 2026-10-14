@@ -109,3 +109,7 @@ The standalone getting-started program executed all three model versions, verifi
 Commands: `dotnet run --project tests/Loom.Tests -- .`; `python3 tools/test_live.py dotnet --conversion --datatypes`; `python3 tools/test_memory_demo.py dotnet`. Browser checks require Playwright and Chromium; set NODE_PATH and CHROMIUM_EXECUTABLE if using external installations.
 
 Raw results are in docs/test-results/v012-*.txt. These are prototype functional checks, not a production security, load or database-provider certification.
+
+## Scientific foundation (#1)
+
+The full framework/provider suite passes 411 checks (324 existing plus 87 scientific checks). The new example builds and runs with expected temperature/uncertainty conversions and dimension-mismatch refusal. Logs: `docs/test-results/science-core.txt` and `science-example.txt`. CI includes the scientific example; these are local results, not a claim about hosted workflow completion.

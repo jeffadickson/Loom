@@ -1,79 +1,43 @@
-# Ordered implementation backlog
+# Active backlog and GitHub task index
 
-This file is tracked with the source; checkboxes mean completed work, not estimates.
+GitHub issues are the current task tracker. This index replaces stale release-by-release checkboxes; historical requirements remain the acceptance baseline, with later implemented features taking precedence. P0 denotes a production gate, not a claim that this prototype is production-ready.
 
-- [x] Metadata/catalog, scalar field validation and link targets.
-- [x] Central CRUD service, role/action permissions, version conflicts.
-- [x] C# calculation hook and read-only value protection.
-- [x] SQLite tables, transactional audit, memory adapter.
-- [x] Conservative additive migrations and schema-version guard.
-- [x] Generated UI, linked pickers, search/sort/page and report/CSV.
-- [x] Submit/cancel lifecycle and history.
-- [x] C# record generator and validation CLI.
-- [x] Typed CRUD/lifecycle/history facade, identity-based property selectors and generated record binding.
-- [ ] Build-integrated generation, broader schema diagnostics and query translation (remaining META-07/08).
-- [ ] Full metadata diagnostics and constraints (META-06/11).
-- [ ] Provider-side query AST and indexes (DB-14).
-- [ ] PostgreSQL adapter with live conformance CI (DB-05).
-- [x] Stable type/field IDs, exact-name legacy adoption, SQLite field rename/addition plans and caption edits.
-- [ ] General legacy identity mapping and DocType renames (remaining MIG-02/05).
-- [ ] Declarative backfills, conversion/constraint preflight and safe field retirement (MIG-07–11).
-- [x] SQLite plan/apply, transactional ledger, column/index drift checks and rollback.
-- [ ] Production CLI, deployment coordination and recovery (remaining DB-11, MIG-12–15/19).
-- [ ] Coordinate generated code/API/report references and provider migration conformance (MIG-16–18).
-- [x] Demonstrate field rename/addition with populated equipment, retained links/history and full host restart.
-- [ ] Complete remaining backfill/conversion/retirement demo acceptance (MIG-20).
-- [ ] Real authentication and secure deployment (SEC-02/07).
-- [ ] Record/field permissions and tenant boundaries (SEC-03/04).
-- [ ] Backup/restore and engine-transfer utilities (DB-16).
-- [ ] Child tables and complete document hook lifecycle (META-04/DOC-05).
-- [x] Basic visual model editor with migration preview and accepted JSON export.
-- [ ] Full model designer (remaining META-09).
-- [x] Basic visual table-report designer: palette, drag/reorder, relative widths, alignment, typography, grouping/totals, preview and SQLite save.
-- [ ] Advanced report layout: free-position objects, repeated page bands, nested groups and multiple saved layouts (remaining RPT-02).
-- [ ] Workflow engine, durable jobs and transactional outbox (DOC-07/08/09).
-- [ ] Attachments (UI-06).
-- [x] Programmer-defined HTML report writer with grouping, totals, linked titles and browser printing (partial RPT-04).
-- [ ] Server PDF generation and advanced pagination.
-- [ ] SQL Server and MariaDB adapters (DB-06/07).
-- [ ] OpenAPI, OpenTelemetry, CI/deployment and performance gates (API-02/OPS-02/04/05/06).
+Implemented baseline: scalar models, typed repositories, local role checks, Memory/SQLite, audit, exact money, bounded compressed binary fields, URI references, supported migrations, report writer/designer and demos. The basic GitHub build workflow is present; broader CI remains open.
 
-## v0.3 implementation update
+| Issue | Requirements | Work |
+|---|---|---|
+| [#1](https://github.com/jeffadickson/Loom/issues/1) | SCI-01 | Scientific quantity and uncertainty primitives — completed |
+| [#2](https://github.com/jeffadickson/Loom/issues/2) | SCI-02 | Integrate scientific quantities into model fields and persistence |
+| [#3](https://github.com/jeffadickson/Loom/issues/3) | SCI-03 | Scientific typed arrays and chunked binary storage |
+| [#4](https://github.com/jeffadickson/Loom/issues/4) | SCI-04 | Scientific run provenance and immutable raw results |
+| [#5](https://github.com/jeffadickson/Loom/issues/5) | SCI-05 | Scientific timing and sample quality masks |
+| [#6](https://github.com/jeffadickson/Loom/issues/6) | SCI-06 | External dataset references and scientific interchange adapters |
+| [#7](https://github.com/jeffadickson/Loom/issues/7) | META-07/08/11 | Build-time model generation and diagnostics |
+| [#8](https://github.com/jeffadickson/Loom/issues/8) | META-06/09 | Complete metadata constraints and model designer |
+| [#9](https://github.com/jeffadickson/Loom/issues/9) | DB-14/META-08 | Provider-side query AST, indexes and link pagination |
+| [#10](https://github.com/jeffadickson/Loom/issues/10) | DB-05/15/MIG-18 | PostgreSQL provider and live conformance CI |
+| [#11](https://github.com/jeffadickson/Loom/issues/11) | DB-06 | SQL Server provider and conformance |
+| [#12](https://github.com/jeffadickson/Loom/issues/12) | DB-07 | MariaDB/MySQL provider and version matrix |
+| [#13](https://github.com/jeffadickson/Loom/issues/13) | MIG-02/05 | Legacy identity mapping and DocType renames |
+| [#14](https://github.com/jeffadickson/Loom/issues/14) | MIG-07/08/09/10/17/20 | Remaining backfills, transformations and constraint migrations |
+| [#15](https://github.com/jeffadickson/Loom/issues/15) | MIG-11/20 | Safe field retirement and separately reviewed purge |
+| [#16](https://github.com/jeffadickson/Loom/issues/16) | DB-11/MIG-12-15/19/OPS-05 | Production migration CLI, coordination and recovery |
+| [#17](https://github.com/jeffadickson/Loom/issues/17) | MIG-16/18 | Coordinate schema changes with generated code and external contracts |
+| [#18](https://github.com/jeffadickson/Loom/issues/18) | SEC-02/07 | Real authentication and secure deployment |
+| [#19](https://github.com/jeffadickson/Loom/issues/19) | SEC-03/04 | Row/field authorization and tenant isolation |
+| [#20](https://github.com/jeffadickson/Loom/issues/20) | SEC-06 | Audit retention, redaction and tamper evidence |
+| [#21](https://github.com/jeffadickson/Loom/issues/21) | DB-16 | Backup, restore and database transfer |
+| [#22](https://github.com/jeffadickson/Loom/issues/22) | META-04/DOC-05 | Child tables and full transaction-aware hook lifecycle |
+| [#23](https://github.com/jeffadickson/Loom/issues/23) | DOC-07 | Declarative approval workflows and amendments |
+| [#24](https://github.com/jeffadickson/Loom/issues/24) | DOC-08/09 | Durable jobs, scheduler and transactional outbox |
+| [#25](https://github.com/jeffadickson/Loom/issues/25) | UI-06 | Saved views, bulk actions, comments and managed attachments |
+| [#26](https://github.com/jeffadickson/Loom/issues/26) | UI-05 | Accessibility and responsive UI acceptance |
+| [#27](https://github.com/jeffadickson/Loom/issues/27) | RPT-02/03/04 | Advanced reports, provider queries and server PDF |
+| [#28](https://github.com/jeffadickson/Loom/issues/28) | RPT-05 | Charts, dashboards, XLSX and scheduled report delivery |
+| [#29](https://github.com/jeffadickson/Loom/issues/29) | API-02/03 | Versioned API contracts, SDKs, idempotency and bulk import |
+| [#30](https://github.com/jeffadickson/Loom/issues/30) | OPS-03/04 | OpenTelemetry, structured errors and operational diagnostics |
+| [#31](https://github.com/jeffadickson/Loom/issues/31) | OPS-02/05/06 | Expand CI, packaging, dependency review and performance gates |
+| [#32](https://github.com/jeffadickson/Loom/issues/32) | META-05/10 | Application packaging and singleton/tree/virtual models |
+| [#33](https://github.com/jeffadickson/Loom/issues/33) | GOV-01 | Resolve license and remaining architecture decisions |
 
-- `AttributeCatalog` reads Document/Field/Grant attributes into the canonical catalog. Explicit permanent IDs survive property renames. `Models:Source=CSharp` selects the supplied equivalent C# example; browser model mutation is blocked in this mode. Source/database mismatch refuses startup.
-- `--plan-model`, `--apply-model=<reviewed-id>` and `--export-model` expose local source-model planning/application and inspection. Production deployment/recovery coordination remains open.
-- `SavedReports.Run` resolves persisted type/field identities for columns, equality filter and sort. `/api/saved-reports/EquipmentRegister` runs the source-controlled example, enforcing read permission and a 200-row cap. Results return readable column names/captions and row arrays.
-- External SQL compatibility views, arbitrary code dependency analysis, full report designer, aggregates/joins and backfills remain open. See README for exact authoring and CLI examples.
-
-
-## v0.7 implementation update
-
-The visual designer now supports movable static text blocks in report-start and report-end bands, plus repeating printed page header/footer text and optional Page N of M numbering. Saved layouts retain these settings. Band constraints: 120px height, 12 blocks maximum, 500 characters per block, font 9–40px; page header/footer text is limited to 120 characters. Coordinates are validated server-side, HTML text is escaped and CSS generated-content strings use hexadecimal escaping. Images, arbitrary data-bound objects, nested groups, multiple named layouts and server PDF generation remain open. See README for operation and browser-print limits. This supersedes earlier deferrals of these implemented features.
-
-
-## v0.8 implementation update
-
-Positioned report-start/end blocks support static text, filtered report record count and selected numeric-field sum. `ReportTextBlock` adds `Source` (`text`, `count`, `sum`; default `text` for compatibility) and optional `FieldId` (sum only). Text is the literal prefix for bound values. Numeric sums resolve permanent IDs, exclude nulls and refuse decimal overflow. Invalid/missing/nonselected/nonnumeric bindings and unknown sources are rejected. Saved blocks are evaluated using the same authorized rows as the report table; no expression, SQL or template execution is accepted. Counts/sums are report-wide, not group/page-specific. Individual-record fields, detail-band layouts, images and configurable numeric formats remain open.
-
-
-## v0.9 implementation update: required additions
-
-MIG-07/08/18/20 are now partially implemented for explicit constant backfills on new required, nonunique scalar fields in SQLite. The browser offers required additions and initial values; C# and JSON source authors can pass `--backfills=PATH` to both plan and apply commands. The normalized backfill specification is part of plan identity and migration receipts. Existing schema-only plan IDs remain unchanged. Apply revalidates and rebuilds affected tables atomically, copies old fields by permanent identity, fills new required fields, recreates framework unique indexes and commits metadata plus ledger together. No permanent future-record default is installed. Record identities/versions and old audit snapshots remain unchanged. Records added between preview and apply receive the same reviewed value.
-
-Remaining: optional-to-required conversion, copy-field rules, new-record default policies, type conversions, field retirement, uniqueness/link changes, larger/online migration coordination and additional database providers. Rebuild refuses custom indexes/triggers, database views/physical foreign keys, custom defaults/generated columns and detected custom constraints. See README for exact supported scalar types and CLI use. This update supersedes earlier blanket statements that backfills are unimplemented.
-
-
-## v0.10 implementation update: optional-to-required and onboarding
-
-MIG-08 now also supports making existing optional, nonunique/noncomputed scalar fields required. Preview counts nulls and validates populated values. Nulls require an explicit constant backfill; fully populated fields need no backfill. Apply repeats preflight inside its transaction, preserves non-null values and fills only nulls before enforcing NOT NULL. A no-backfill plan refuses if new nulls appear. Simultaneous field renaming preserves identity; old audit snapshots remain unchanged. Read-only, unique and Link transitions, type conversions, copy-field backfills and field retirement remain open. This supersedes the earlier optional-to-required deferral.
-
-A new getting-started guide and independently runnable C# console project demonstrate attribute models, typed records, a real SQLite migration, preserved values and required-field validation. The example uses a temporary database and verifies its own results. See `docs/GETTING_STARTED.md` and `examples/Loom.GettingStarted/Program.cs`.
-
-
-## v0.11 implementation update: exact numeric conversion
-
-MIG-09/18/20 now cover Integer → Decimal and Decimal → Integer for nonunique, noncomputed fields. Preflight checks every populated value and reports invalid counts; apply repeats preflight under its transaction. Narrowing requires whole values within signed 64-bit range. Conversion avoids floating-point intermediates, preserves nulls, and can combine with renaming and an explicit required-field backfill. Failure after copying still rolls back the entire migration. Other type pairs, custom rounding/truncation and precision/scale rules remain open. Conversion SQL uses provider-registered functions and must be applied through Loom. The C# getting-started program now demonstrates both success and refusal. This supersedes earlier blanket deferrals of numeric conversions.
-
-## v0.12 implementation update
-
-Money, explicit decimal precision/rounding, text/date/select conversions, required-to-optional migration, Binary with transparent SQLite compression, and external Uri references are implemented. The API transports numeric field values as strings. The new `--memory-demo` mode runs seeded test results without database setup. See [DATA_TYPES.md](DATA_TYPES.md) for authoritative contracts and remaining limits; this supersedes earlier deferrals of these features. Streaming/object storage, time-series querying/adapters, FX, additional durable providers and production authentication remain open.
+Completed first slice: #1 quantity/uncertainty primitives, with 87 scientific checks and a runnable example. Next scientific task: #2 native document-field integration; arrays, timing, provenance and adapters have independent acceptance criteria in #3–6.
