@@ -84,3 +84,27 @@ MIG-09/18/20 now cover Integer → Decimal and Decimal → Integer for nonunique
 ## v0.12 implementation update
 
 Money, explicit decimal precision/rounding, text/date/select conversions, required-to-optional migration, Binary with transparent SQLite compression, and external Uri references are implemented. The API transports numeric field values as strings. The new `--memory-demo` mode runs seeded test results without database setup. See [DATA_TYPES.md](DATA_TYPES.md) for authoritative contracts and remaining limits; this supersedes earlier deferrals of these features. Streaming/object storage, time-series querying/adapters, FX, additional durable providers and production authentication remain open.
+
+## EF Core boundary
+
+PostgreSQL and SQL Server use EF Core behind the existing `ServerDocumentStore`
+API. EF maps the fixed schema, document and audit tables, translates their LINQ
+queries, performs writes, manages serializable transactions, and checks the
+original document version on updates and deletes. Each transaction gets a fresh
+context; writes flush inside the transaction so subsequent session reads see them.
+Loom continues to own authorization, validation, hooks, audit policy, scientific
+values and application metadata. Decimal money and binary payload semantics remain
+in Loom's serialized document representation.
+
+Existing server databases keep their table names, columns and JSON representation.
+Bootstrap DDL is retained deliberately: `EnsureCreated` is not an adoption or
+migration mechanism for an existing database. Application catalog changes still
+fail closed until explicit server schema migration support exists. EF does not
+currently map each dynamic application field to a relational column: field filters
+still use the bounded document scan, and provider-side field queries/indexes remain
+open work. SQLite retains its existing stable-field-ID migration and query engine.
+Do not run two independent migration engines against the same schema.
+
+Testcontainers checks both engines against the shared repository contract and
+additional tests for legacy table adoption, direct stale writes/deletes, recovery
+after a failed insert, read-your-writes, concurrent connections and schema drift.
