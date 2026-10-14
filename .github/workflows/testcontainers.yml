@@ -1,0 +1,39 @@
+name: xUnit and Testcontainers
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  fast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: dotnet test tests/Loom.UnitTests --configuration Release --logger 'trx;LogFileName=fast.trx' --results-directory TestResults
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fast-test-results
+          path: TestResults
+  database:
+    needs: fast
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [PostgreSQL, SQLServer]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: dotnet test tests/Loom.ContainerTests --configuration Release --filter 'Database=${{ matrix.database }}' --logger 'trx;LogFileName=database.trx' --results-directory TestResults
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: database-results-${{ matrix.database }}
+          path: TestResults

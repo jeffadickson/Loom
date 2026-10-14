@@ -117,6 +117,7 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
         var values = (JsonObject)input.DeepClone();
         if(id==null)foreach(var f in schema.Fields.Where(f=>f.Default!=null && !values.ContainsKey(f.Name)))values[f.Name]=f.Default;
         foreach (var hook in hooks.Where(h => h.Type == schema.Name)) hook.BeforeSave(values);
+        if(values.Any(v=>!schema.Fields.Any(f=>f.Name==v.Key)))throw new LoomException(422,"Hook produced an undeclared field.");
         foreach (var f in schema.Fields)
         {
             var node = values[f.Name];

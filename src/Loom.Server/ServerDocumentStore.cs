@@ -58,7 +58,14 @@ public sealed class ServerDocumentStore : IDocumentStore
         {
             if(catalog==null)throw new InvalidOperationException("Call Migrate first.");
             using var tx=connection.BeginTransaction(IsolationLevel.Serializable);
-            try{var result=action(new Session(this,tx,catalog));tx.Commit();return result;}
+            try
+            {
+                using var schema=Command(tx,"SELECT model FROM loom_schema WHERE singleton=1");
+                var expected=JsonSerializer.Serialize(catalog.Types.Values.OrderBy(t=>t.Name,StringComparer.Ordinal),Catalog.Json);
+                if(schema.ExecuteScalar() is not string accepted || accepted!=expected)
+                    throw new LoomException(409,"Database model changed; restart this host with the accepted model.");
+                var result=action(new Session(this,tx,catalog));tx.Commit();return result;
+            }
             catch(DbException ex)when(IsConflict(ex)){throw new LoomException(409,"Concurrent transaction or database constraint conflict; retry the whole operation.");}
         }
     }
