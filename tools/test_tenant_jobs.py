@@ -2,7 +2,7 @@
 import http.cookiejar,json,os,sqlite3,subprocess,sys,tempfile,time,urllib.request,urllib.error
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
-dotnet=str(Path(sys.argv[1]).resolve()) if len(sys.argv)>1 else 'dotnet'
+dotnet=str(Path(sys.argv[1]).resolve()) if len(sys.argv)>1 and Path(sys.argv[1]).exists() else (sys.argv[1] if len(sys.argv)>1 else 'dotnet')
 demo=root/'src/Loom.Demo/bin'/os.environ.get('LOOM_CONFIGURATION','Release')/'net8.0/Loom.Demo.dll'
 origin='http://127.0.0.1:5094'
 def api(client,path,body=None,expected=200):
