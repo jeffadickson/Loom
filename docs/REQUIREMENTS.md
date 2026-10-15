@@ -334,3 +334,14 @@ Implemented initial scope and remaining scale/integration goals are in FACILITY_
   existing same-origin/header protection. Omit payloads/lease tokens from lists and audit mutations.
 - **OPS-03:** Demonstration handlers remain local and allowlisted. Recurring cron/calendar schedules,
   arbitrary production handler registration and distributed scale qualification are separate scope.
+
+## Bounded delivery workers
+
+- **WORKER-01:** Provide reusable polling and one-batch APIs with configurable bounded concurrency,
+  batch size and polling delay. Claim only when a processing slot is available.
+- **WORKER-02:** Own a separate authorized session and disposable lifetime per scan/active delivery;
+  never share a database session between concurrent handlers. Serialize batches on one worker instance.
+- **WORKER-03:** Isolate preparation, scan and item failures; recover persisted unacknowledged leases
+  after expiry. Host cancellation awaits cooperative handlers and disposes all active scopes.
+- **WORKER-04:** Verify concurrency limits, competing workers, stable retry keys, cancellation cleanup
+  and independent database connections with SQLite and PostgreSQL/SQL Server Testcontainers.

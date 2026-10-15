@@ -278,6 +278,14 @@ API, authorization, audit-payload retention, host integration and remaining sche
 RecurringSchedules atomically materializes aligned UTC occurrences into DeliveryOutbox and advances
 its application-owned cursor. Fixed intervals have explicit bounded CatchUp or latest-occurrence Skip
 behavior. The demo's JobAdministration uses isolated SQLite storage, signed-in administrator claims,
-versioned actions and one connection per tick/request. Its hosted worker polls persisted work; its
+versioned actions and independent connections per scan, active delivery and request. Its shared
+DeliveryWorker bounds concurrency, isolates item failures and polls persisted work; its
 browser UI shares the existing operations visual style and hides payload/lease secrets from lists.
 Only local receipt/failure handlers are enabled. See RECURRING_SCHEDULES.md for semantics and limits.
+
+DeliveryWorker snapshots a host-controlled handler registry and obtains authorized sessions through
+an ApplicationSessionScope factory. Its per-instance batch gate prevents overlapping polls; separate
+instances use durable outbox fencing. Claiming starts inside the concurrency limit, preparation errors
+do not block queued work, and shutdown awaits cooperative handlers before releasing their scopes.
+SQLite contention/cancellation tests and PostgreSQL/SQL Server worker tests exercise independent
+connections and recovery. Distributed throughput and fairness still require production qualification.

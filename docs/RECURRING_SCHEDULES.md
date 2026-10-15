@@ -49,7 +49,9 @@ Production applications must register their own trusted handlers using the core 
 or credential can be injected through the administration form.
 
 The hosted worker polls every second, materializes at most 25 occurrences, then processes at most 25
-deliveries. Each tick owns its database connection and authorized worker session. Graceful shutdown
+deliveries through the shared DeliveryWorker, with at most four active handlers. Scanning and each
+active delivery own independent database connections and authorized worker sessions. Claims are
+acquired only when a processing slot is available. Graceful shutdown
 cancels delivery; durable records survive restart. Multiple-process/distributed throughput, fairness,
 queue retention and recurring calendar expressions remain qualification/feature work.
 

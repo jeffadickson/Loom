@@ -48,6 +48,41 @@ public sealed class SqlServerFixture:IAsyncLifetime,IDatabaseFixture
 public abstract class ServerRepositoryContract(IDatabaseFixture fixture):RepositoryContract
 {
     protected override IDocumentStore Open()=>new ServerDocumentStore(fixture.CreateDatabase(),fixture.Engine);
+    private sealed class WorkerClock:TimeProvider
+    {
+        public DateTimeOffset Now=DateTimeOffset.UtcNow;
+        public override DateTimeOffset GetUtcNow()=>Now;
+    }
+    [Fact] public async Task IndependentDeliveryWorkersRecoverProviderContentionWithoutLosingMessages()
+    {
+        using var database=fixture.CreateDatabase();var connectionString=database.ConnectionString;
+        var model=new Catalog([DeliveryOutbox.Definition("Delivery",new(){["Admin"]=["read","create","write"]})]);
+        ServerDocumentStore Store()=>new(fixture.Engine==ServerEngine.PostgreSql?new NpgsqlConnection(connectionString):new SqlConnection(connectionString),fixture.Engine);
+        ApplicationSession Session(ServerDocumentStore store)=>new(new(model,store,[]),Admin);
+        var clock=new WorkerClock();var outbox=new DeliveryOutbox(new(MaxAttempts:10),clock);
+        using(var store=Store())
+        {
+            store.Migrate(model);var session=Session(store);
+            for(var i=0;i<8;i++)outbox.Enqueue(session,"Delivery","send",new(){["index"]=i});
+        }
+        ApplicationSessionScope Scope()
+        {
+            var store=Store();try{store.ReadCatalog();return new(Session(store),store);}catch{store.Dispose();throw;}
+        }
+        var accepted=new System.Collections.Concurrent.ConcurrentDictionary<string,bool>();
+        var handlers=new Dictionary<string,Func<OutboxMessage,CancellationToken,Task>>{["send"]=async(message,token)=>
+        {await Task.Yield();token.ThrowIfCancellationRequested();accepted.TryAdd(message.Key,true);}};
+        var first=new DeliveryWorker(Scope,outbox,"Delivery",handlers,new(2,8));
+        var second=new DeliveryWorker(Scope,outbox,"Delivery",handlers,new(2,8));
+        await Task.WhenAll(first.RunOnceAsync(),second.RunOnceAsync()).WaitAsync(TimeSpan.FromSeconds(90));
+        // Serializable providers may reject a claim or acknowledgement. Expiry plus a later poll
+        // recovers it; the receiver deduplicates any acknowledgement-loss replay.
+        var drain=new DeliveryWorker(Scope,outbox,"Delivery",handlers,new(1,8));
+        for(var i=0;i<3;i++){clock.Now=clock.Now.AddMinutes(3);await drain.RunOnceAsync();}
+        using var check=Scope();var rows=check.Session.Query("Delivery",new(model.Get("Delivery").Fields[0].Id!));
+        Assert.Equal(8,accepted.Count);Assert.Equal(8,rows.Total);
+        Assert.All(rows.Items,d=>Assert.Equal("Complete",d.Values["Status"]!.ToString()));
+    }
     [Fact] public void Migration_preserves_identity_data_audit_and_reports_and_rejects_stale_plans()
     {
         using var store=(ServerDocumentStore)Open();var model=Model();var service=Service(store);

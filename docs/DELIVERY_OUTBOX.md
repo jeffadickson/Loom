@@ -65,6 +65,42 @@ Complete/Cancel clear payloads from the current record. **Audit snapshots retain
 this is not cryptographic erasure. Do not place passwords/tokens or unnecessary personal data in this
 outbox. Sensitive-message encryption, retention and audit redaction remain separate work.
 
+## Bounded worker host
+
+`DeliveryWorker` provides reusable polling and bounded asynchronous dispatch:
+
+```csharp
+// OpenWorkerScope creates a fresh store/connection and an authorized application or tenant
+// session on every call. ApplicationSessionScope owns the store or dependency-injection scope.
+var worker = new DeliveryWorker(OpenWorkerScope, outbox, "Delivery", handlers,
+    new DeliveryWorkerOptions(Concurrency: 4, BatchSize: 25,
+        PollInterval: TimeSpan.FromSeconds(1)),
+    prepare: session => schedules.Tick(session, "Schedule", "Delivery"));
+await worker.RunAsync(batch => LogBatch(batch), stoppingToken);
+```
+
+The host supplies `OpenWorkerScope` and `LogBatch`; optional preparation can be omitted. The factory
+must return an independent session and disposable lifetime for every scan and active delivery. Bind
+authorization (including tenant membership where applicable) in that factory. Handlers are registered
+by the host and copied at construction; they must be safe for concurrent invocation.
+
+Each batch closes its scan scope before dispatch. A candidate is claimed only after a processing slot
+is available, so waiting candidates do not consume their leases. Defaults are four active deliveries,
+25 candidates per batch and a one-second delay after each batch. Supported limits are 1–32 active
+items, 1–100 candidates and a polling delay of 1 ms–1 hour. Concurrent calls on the same worker serialize;
+separate worker instances coordinate through persisted version checks and lease tokens.
+
+Preparation failures are reported while existing queued deliveries continue. Scan failures return a
+`ScanFailed` result and the polling loop tries again. Item failures/provider conflicts are isolated;
+unacknowledged leases recover after expiry. Results distinguish completion, skipped claims, delivery
+failure and interruption; result order is unspecified. Diagnostic callbacks must be synchronous, fast
+and non-throwing: a callback exception stops the host loop. Database operations remain synchronous.
+
+Host cancellation waits for cooperative active handlers and disposes their scopes. It leaves any
+unacknowledged claims durable. This is not a forced shutdown timeout or automatic lease renewal.
+The host must configure suitable handler timeouts and lease durations. `RunOnceAsync` also supports
+explicit polling/testing without starting a background loop.
+
 ## Delivery guarantee
 
 This is at-least-once delivery with a finite automatic retry budget. Delivery can fail permanently.

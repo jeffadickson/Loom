@@ -94,13 +94,9 @@ internal sealed class JobAdministration
             return Results.NoContent();
         });
     }
-    /// <summary>Each tick owns its connection; no session crosses worker/request boundaries.</summary>
-    public async Task Tick(CancellationToken stop)
+    /// <summary>Register trusted handlers once; each worker scope owns a fresh database connection.</summary>
+    private DeliveryWorker CreateWorker()
     {
-        using var store=Open();var session=Session(store,new("jobs-worker","Worker"));
-        try{schedules.Tick(session,"Schedule","Delivery");}
-        catch(Exception e) when(e is not OperationCanceledException){Console.Error.WriteLine("Schedule materialization: "+e);}
-        // A malformed/conflicting schedule must not block already queued deliveries.
         var handlers=new Dictionary<string,Func<OutboxMessage,CancellationToken,Task>>
         {
             ["demo.receipt"]=(message,token)=>
@@ -118,19 +114,23 @@ internal sealed class JobAdministration
             },
             ["demo.failure"]=(_,_)=>throw new InvalidOperationException("Demonstration receiver unavailable.")
         };
-        foreach(var candidate in outbox.Candidates(session,"Delivery"))
+        return new DeliveryWorker(()=>
         {
-            stop.ThrowIfCancellationRequested();var lease=outbox.Claim(session,candidate);if(lease==null)continue;
-            var result=await outbox.DeliverAsync(session,lease,handlers,stop);
-            if(result.Exception!=null)Console.Error.WriteLine($"Delivery {candidate.Id}: {result.Exception}");
-        }
+            var store=Open();return new ApplicationSessionScope(Session(store,new("jobs-worker","Worker")),store);
+        },outbox,"Delivery",handlers,prepare:s=>schedules.Tick(s,"Schedule","Delivery"));
     }
     private sealed class Worker(JobAdministration host):BackgroundService
     {
         protected override async Task ExecuteAsync(CancellationToken stop)
         {
-            using var timer=new PeriodicTimer(TimeSpan.FromSeconds(1));
-            try{while(await timer.WaitForNextTickAsync(stop))try{await host.Tick(stop);}catch(Exception e) when(e is not OperationCanceledException){Console.Error.WriteLine("Jobs worker: "+e);}}
+            try
+            {
+                await host.CreateWorker().RunAsync(batch=>
+                {
+                    foreach(var result in batch.Results.Where(r=>r.Error!=null))
+                        Console.Error.WriteLine($"Jobs {result.Outcome} {result.Id}: {result.Error}");
+                },stop);
+            }
             catch(OperationCanceledException) when(stop.IsCancellationRequested){}
         }
     }
