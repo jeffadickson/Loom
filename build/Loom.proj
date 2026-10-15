@@ -18,6 +18,7 @@
     <Exec WorkingDirectory="$(Root)" Command="&quot;$(DotNet)&quot; examples/Loom.GettingStarted/bin/$(Configuration)/net8.0/Loom.GettingStarted.dll" />
     <Exec WorkingDirectory="$(Root)" Command="&quot;$(DotNet)&quot; examples/Loom.Science/bin/$(Configuration)/net8.0/Loom.Science.dll" />
     <Exec WorkingDirectory="$(Root)" Command="&quot;$(DotNet)&quot; src/Loom.Demo/bin/$(Configuration)/net8.0/Loom.Demo.dll --outbox-demo" />
+    <Exec WorkingDirectory="$(Root)" Command="&quot;$(DotNet)&quot; src/Loom.Demo/bin/$(Configuration)/net8.0/Loom.Demo.dll --tenant-jobs-demo" />
   </Target>
   <Target Name="BrowserTest" DependsOnTargets="Build">
     <Exec WorkingDirectory="$(Root)" Command="&quot;$(Python)&quot; tools/build_introduction.py" />

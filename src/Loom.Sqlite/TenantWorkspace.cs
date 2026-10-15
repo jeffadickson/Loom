@@ -83,6 +83,23 @@ public sealed class TenantWorkspace
         catch {store.Dispose();throw;}
     }
 
+    /// <summary>Creates a trusted worker route; every scope reopens this tenant and resolves current membership.</summary>
+    /// <param name="authenticatedUserId">Host-configured service identity, never a user-supplied role.</param>
+    /// <param name="tenant">Operator-allowlisted tenant identifier.</param>
+    /// <param name="prepare">Optional synchronous tenant-local schedule materialization.</param>
+    /// <returns>A route that owns a fresh TenantSession for each scan and active delivery.</returns>
+    public DeliveryTenant DeliveryRoute(string authenticatedUserId,string tenant,Action<IApplicationSession>? prepare=null)
+    {
+        ValidateId(tenant);
+        if(!tenants.Contains(tenant))throw new LoomException(403,"Tenant access denied.");
+        if(string.IsNullOrWhiteSpace(authenticatedUserId))throw new ArgumentException("Configure a service identity.",nameof(authenticatedUserId));
+        return new(tenant,()=>
+        {
+            var session=Open(authenticatedUserId,tenant);
+            return new ApplicationSessionScope(session,session);
+        },prepare);
+    }
+
     /// <summary>Trusted local operator backup; not exposed as a tenant HTTP endpoint.</summary>
     public void Backup(string tenant,string destination)
     {

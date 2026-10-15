@@ -345,3 +345,16 @@ Implemented initial scope and remaining scale/integration goals are in FACILITY_
   after expiry. Host cancellation awaits cooperative handlers and disposes all active scopes.
 - **WORKER-04:** Verify concurrency limits, competing workers, stable retry keys, cancellation cleanup
   and independent database connections with SQLite and PostgreSQL/SQL Server Testcontainers.
+
+## Tenant delivery hosting
+
+- **HOST-01:** Snapshot explicit named handlers and a unique operator-configured tenant route list;
+  reject invalid registrations before opening storage. Payloads cannot select tenant authority.
+- **HOST-02:** Open fresh tenant-bound sessions with live service membership per scan/delivery;
+  revocation prevents subsequent document operations, including acknowledgement.
+- **HOST-03:** Supply trusted tenant context and stable tenant-qualified receiver keys. Preserve
+  original local keys and document at-least-once remote effects and receiver deduplication.
+- **HOST-04:** Process bounded batches across tenants without multiplying per-host concurrency;
+  isolate tenant scan failures, serialize rounds, and recover interrupted leases after restart.
+- **HOST-05:** Provide an executable two-tenant example and real SQLite isolation/revocation/recovery
+  tests. Document DI scope ownership and production deployment limits.

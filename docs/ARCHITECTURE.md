@@ -289,3 +289,12 @@ instances use durable outbox fencing. Claiming starts inside the concurrency lim
 do not block queued work, and shutdown awaits cooperative handlers before releasing their scopes.
 SQLite contention/cancellation tests and PostgreSQL/SQL Server worker tests exercise independent
 connections and recovery. Distributed throughput and fairness still require production qualification.
+
+## Tenant delivery host
+
+DeliveryHandlerRegistry snapshots explicit host callbacks. TenantDeliveryWorker binds them to trusted
+route context and tenant-qualified receiver keys, visits one bounded batch per tenant each round, and
+serializes overlapping rounds. TenantWorkspace.DeliveryRoute supplies the SQLite adapter, creating a
+fresh TenantSession with live membership for every scope. No worker role or tenant comes from payloads.
+Custom provider routes remain host responsibilities. See [tenant delivery hosting](TENANT_DELIVERY_HOSTING.md)
+for dependency-injection scope ownership, runnable example, revocation semantics and capacity limits.

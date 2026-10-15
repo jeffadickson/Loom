@@ -125,3 +125,6 @@ Recurring fixed UTC schedules and an authenticated local operations UI/host are 
 see RECURRING_SCHEDULES.md. Remaining scope in #24: cron/calendar schedules, retention/encryption,
 large-queue/distributed-worker stress qualification, and integration of additional real consumers.
 The example host is not a production multi-tenant scheduler deployment.
+
+For explicit handler registration and a host spanning multiple authorized tenant databases, see
+[Tenant delivery hosting](TENANT_DELIVERY_HOSTING.md). Run `--tenant-jobs-demo` for the offline example.

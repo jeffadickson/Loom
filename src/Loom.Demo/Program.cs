@@ -14,6 +14,7 @@ using Npgsql;
 using Microsoft.Data.SqlClient;
 using Loom.Demo;
 
+if(args.Contains("--tenant-jobs-demo")){await TenantDeliveryDemo.Run();return;}
 if(args.Contains("--outbox-demo")){await OutboxDemo.Run();return;}
 
 // Recovery is an offline operator operation, before opening the ordinary demo database.
