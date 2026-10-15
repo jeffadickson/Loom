@@ -1,11 +1,12 @@
 'use strict';
 const $=id=>document.getElementById(id);
-let data,tenant='',user='',view='requests',register='Instrument',operators=[];
+let data,tenant='',user='',view='requests',register='Instrument',operators=[],offsets={},pageTotals={},references={};
 const labels={AwaitingReview:'Awaiting review',ChangesRequested:'Changes requested',ReleaseQueued:'Report queued'};
 const text=value=>String(value??'');
 const escape=value=>text(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const badge=value=>'<span class="badge '+escape(value)+'">'+escape(labels[value]||value)+'</span>';
-const name=(type,id)=>data?.records[type]?.find(d=>d.id===id)?.values.Name||id||'—';
+const record=(type,id)=>references[type+'/'+id]||data?.records[type]?.find(d=>d.id===id);
+const name=(type,id)=>record(type,id)?.values.Name||id||'—';
 const date=value=>value?new Date(value).toLocaleString():'—';
 async function api(path,body,method){
   const response=await fetch(path,{method:method||(body?'POST':'GET'),headers:{'Content-Type':'application/json','X-Loom-Demo':'local'},body:body?JSON.stringify(body):undefined});
@@ -22,6 +23,7 @@ function notify(e){$('notice').textContent=e.message||e;}
 async function load(){
   if(!tenant)return;
   [data,operators]=await Promise.all([api(route('/overview')),api(route('/operators'))]);
+  offsets={};pageTotals={...data.totals};references={};$('filter').value='';
   $('identity').textContent=user+' / '+data.role;
   $('notice').textContent='';render();
 }
@@ -39,8 +41,8 @@ async function session(){
 function render(){
   $('content').dataset.view=view;
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('selected',b.dataset.view===view));
-  const requests=data.records.Request;
-  $('metrics').innerHTML=[['Open requests',requests.filter(d=>!['Released','Cancelled'].includes(d.values.Status)).length],['In progress',requests.filter(d=>d.values.Status==='Running').length],['Awaiting review',requests.filter(d=>d.values.Status==='AwaitingReview').length],['Released',requests.filter(d=>d.values.Status==='Released').length]].map(([label,value])=>'<div class="metric"><strong>'+value+'</strong><span>'+label+'</span></div>').join('');
+  const states=data.requestStates;
+  $('metrics').innerHTML=[['Open requests',Object.entries(states).filter(([key])=>!['Released','Cancelled'].includes(key)).reduce((sum,[,n])=>sum+n,0)],['In progress',states.Running],['Awaiting review',states.AwaitingReview],['Released',states.Released]].map(([label,value])=>'<div class="metric"><strong>'+value+'</strong><span>'+label+'</span></div>').join('');
   $('create-request').hidden=data.role!=='Manager'||view!=='requests';
   $('filter-label').hidden=view!=='requests';
   $('page-title').textContent={requests:'Test requests',register:'Facility register',releases:'Reports & queue'}[view];
@@ -49,35 +51,48 @@ function render(){
 }
 function matches(d){const query=$('search').value.toLowerCase();return !query||JSON.stringify(d.values).toLowerCase().includes(query)||Object.entries(d.values).some(([key,value])=>data.records[key]&&name(key,value).toLowerCase().includes(query));}
 function table(head,rows){return '<div class="table-wrap"><table><thead><tr>'+head.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+rows.join('')+'</tbody></table>'+(!rows.length?'<p class="empty">No matching records.</p>':'')+'</div>';}
+function pager(type){
+ const start=offsets[type]||0,total=pageTotals[type]??data.totals[type]??0,size=25;
+ return '<div class="pager"><span>'+ (total?'Records '+(start+1)+'–'+Math.min(start+size,total)+' of '+total:'No records')+
+   '</span><div><button data-page-type="'+type+'" data-offset="'+Math.max(0,start-size)+'" '+(start===0?'disabled':'')+'>Previous</button> '+
+   '<button data-page-type="'+type+'" data-offset="'+(start+size)+'" '+(start+size>=total?'disabled':'')+'>Next</button></div></div>';
+}
+function bindPages(){
+ document.querySelectorAll('[data-page-type]').forEach(button=>button.onclick=()=>pageRecords(button.dataset.pageType,Number(button.dataset.offset)).catch(notify));
+}
+async function pageRecords(type,skip=0){
+ const status=type==='Request'&&$('filter').value?'&status='+encodeURIComponent($('filter').value):'';
+ const page=await api(route('/records/'+type+'?skip='+skip+'&take=25'+status));
+ data.records[type]=page.items;offsets[type]=skip;pageTotals[type]=page.total;render();
+}
 function renderRequests(){
   const rows=data.records.Request.filter(matches).filter(d=>!$('filter').value||d.values.Status===$('filter').value);
-  $('content').innerHTML=table(['Test / specimen','Instrument','Reservation','Status'],rows.map(d=>'<tr><td><button class="row-button" data-request="'+d.id+'">'+escape(d.values.Name)+'</button><small>'+escape(name('Specimen',d.values.Specimen))+'</small></td><td>'+escape(name('Instrument',d.values.Instrument))+'<small>'+escape(d.values.Operator)+'</small></td><td>'+escape(date(d.values.Starts))+'<small>Until '+escape(date(d.values.Ends))+'</small></td><td>'+badge(d.values.Status)+'</td></tr>'));
+  $('content').innerHTML=table(['Test / specimen','Instrument','Reservation','Status'],rows.map(d=>'<tr><td><button class="row-button" data-request="'+d.id+'">'+escape(d.values.Name)+'</button><small>'+escape(name('Specimen',d.values.Specimen))+'</small></td><td>'+escape(name('Instrument',d.values.Instrument))+'<small>'+escape(d.values.Operator)+'</small></td><td>'+escape(date(d.values.Starts))+'<small>Until '+escape(date(d.values.Ends))+'</small></td><td>'+badge(d.values.Status)+'</td></tr>'))+pager('Request');
+  bindPages();
   document.querySelectorAll('[data-request]').forEach(b=>b.onclick=()=>detail(b.dataset.request));
 }
-const fields={
-Campaign:[['Name','Campaign name'],['Project','Project'],['Budget','Budget (USD)']],
-Instrument:[['Name','Instrument name'],['Serial','Serial number'],['Location','Location']],
-Calibration:[['Name','Calibration revision'],['Instrument','Instrument','link'],['ValidFrom','Valid from','date'],['ValidUntil','Valid until','date'],['Certificate','Certificate reference']],
-Specimen:[['Name','Specimen name'],['Serial','Serial number'],['Configuration','Configuration revision'],['Material','Material / assembly']],
-Procedure:[['Name','Procedure name'],['Revision','Revision'],['Instructions','Instructions','textarea'],['Unit','Measurement unit'],['Lower','Lower acceptance limit'],['Upper','Upper acceptance limit']]
-};
 function renderRegister(){
-  $('content').innerHTML='<div class="register-tabs">'+Object.keys(fields).map(type=>'<button data-register="'+type+'" class="'+(type===register?'selected':'')+'">'+type+'</button>').join('')+'</div><div class="section-head"><h2>'+register+' records</h2>'+(data.role==='Manager'?'<button id="add-register">Add '+register.toLowerCase()+'</button>':'')+'</div>'+
-    table(['Record','Details','Created'],data.records[register].filter(matches).map(d=>'<tr><td><strong>'+escape(d.values.Name)+'</strong><small>'+escape(d.id.slice(0,12))+'</small></td><td>'+Object.entries(d.values).filter(([k])=>k!=='Name').map(([k,v])=>'<small>'+escape(k)+': '+escape(data.records[k]?name(k,v):v)+'</small>').join('')+'</td><td>'+escape(date(d.createdAt))+'</td></tr>'));
+  $('content').innerHTML='<div class="register-tabs">'+data.forms.map(f=>f.name).map(type=>'<button data-register="'+type+'" class="'+(type===register?'selected':'')+'">'+type+'</button>').join('')+'</div><div class="section-head"><h2>'+register+' records</h2>'+(data.forms.find(f=>f.name===register)?.canCreate?'<button id="add-register">Add '+register.toLowerCase()+'</button>':'')+'</div>'+
+    table(['Record','Details','Created'],data.records[register].filter(matches).map(d=>'<tr><td><strong>'+escape(d.values.Name)+'</strong><small>'+escape(d.id.slice(0,12))+'</small></td><td>'+Object.entries(d.values).filter(([k])=>k!=='Name').map(([k,v])=>'<small>'+escape(k)+': '+escape(data.records[k]?name(k,v):v)+'</small>').join('')+'</td><td>'+escape(date(d.createdAt))+'</td></tr>'))+pager(register);
+  bindPages();
   document.querySelectorAll('[data-register]').forEach(b=>b.onclick=()=>{register=b.dataset.register;renderRegister();});
   if($('add-register'))$('add-register').onclick=()=>registerForm();
 }
 function renderReleases(){
   $('content').innerHTML='<div class="section-head"><h2>Released reports</h2></div>'+(data.role==='Operator'?'<div class="panel empty">Released reports include project costs. Managers and reviewers can download them.</div>':table(['Report','Released','Evidence'],data.records.Release.filter(matches).map(d=>'<tr><td><strong>'+escape(d.values.Name)+'</strong><small class="hash">'+escape(d.values.Sha256)+'</small></td><td>'+escape(date(d.values.ReleasedAt))+'</td><td><button data-report="'+d.id+'">Download report</button></td></tr>')))+
-    '<div class="section-head"><h2>Report queue</h2><span class="help">Refresh to see worker progress</span></div>'+table(['Request','Status','Attempts / action'],data.records.ReleaseJob.filter(matches).map(d=>'<tr><td>'+escape(d.values.Name)+(d.values.Error?'<small>'+escape(d.values.Error)+'</small>':'')+'</td><td>'+badge(d.values.Status)+'</td><td>'+escape(d.values.Attempts)+(data.role==='Manager'&&d.values.Status==='Failed'?' <button data-retry="'+d.id+'">Retry</button>':'')+'</td></tr>'));
+    (data.role==='Operator'?'':pager('Release'))+'<div class="section-head"><h2>Report queue</h2><span class="help">Refresh to see worker progress</span></div>'+table(['Request','Status','Attempts / action'],data.records.ReleaseJob.filter(matches).map(d=>'<tr><td>'+escape(d.values.Name)+(d.values.Error?'<small>'+escape(d.values.Error)+'</small>':'')+'</td><td>'+badge(d.values.Status)+'</td><td>'+escape(d.values.Attempts)+(data.role==='Manager'&&d.values.Status==='Failed'?' <button data-retry="'+d.id+'">Retry</button>':'')+'</td></tr>'))+pager('ReleaseJob');
+  bindPages();
   document.querySelectorAll('[data-report]').forEach(b=>b.onclick=()=>download('/releases/'+b.dataset.report,'Test_Release.html').catch(notify));
   document.querySelectorAll('[data-retry]').forEach(b=>b.onclick=async()=>{try{const d=data.records.ReleaseJob.find(x=>x.id===b.dataset.retry);await api(route('/jobs/'+d.id+'/retry'),{version:d.version});await load();}catch(e){notify(e);}});
 }
 function dialog(title,body){$('dialog-title').textContent=title;$('dialog-body').innerHTML=body;$('dialog-error').textContent='';if(!$('dialog').open)$('dialog').showModal();}
-function detail(id){
-  const d=data.records.Request.find(x=>x.id===id),v=d.values;
-  const results=data.records.Result.filter(r=>r.values.Request===id).sort((a,b)=>Number(b.values.Attempt)-Number(a.values.Attempt));
-  const reviews=data.records.Review.filter(r=>r.values.Request===id);
+async function detail(id){
+  let details;
+  try{details=await api(route('/requests/'+id));}catch(e){notify(e);return;}
+  for(const [type,doc] of Object.entries(details.references))references[type+'/'+doc.id]=doc;
+  const d=details.request,v=d.values;
+  const results=details.results.sort((a,b)=>Number(b.values.Attempt)-Number(a.values.Attempt));
+  const reviews=details.reviews;
   let action='';
   if(data.role==='Operator'&&v.Operator===user&&['Scheduled','ChangesRequested'].includes(v.Status))action='<button id="start" class="primary">Start test</button>';
   if(data.role==='Operator'&&v.Operator===user&&v.Status==='Running')action='<button id="record" class="primary">Record results</button>';
@@ -105,17 +120,20 @@ function detail(id){
 }
 async function act(path,body,after){
   const buttons=$('dialog').querySelectorAll('button');buttons.forEach(b=>b.disabled=true);
-  try{await api(route(path),body);await load();after?after():$('dialog').close();}
+  try{await api(route(path),body);await load();after?await after():$('dialog').close();}
   catch(e){$('dialog-error').textContent=e.message;}
   finally{buttons.forEach(b=>b.disabled=false);}
 }
 function input(key,label,type='text',value=''){
-  const options=type==='link'?data.records[key]||[]:[];
-  return '<label'+(type==='textarea'?' class="wide"':'')+'>'+escape(label)+(type==='link'?'<select name="'+key+'" required>'+options.map(d=>'<option value="'+d.id+'"'+(value===d.id?' selected':'')+'>'+escape(d.values.Name)+'</option>').join('')+'</select>':type==='textarea'?'<textarea name="'+key+'" required>'+escape(value)+'</textarea>':'<input name="'+key+'" type="'+type+'" value="'+escape(value)+'" required>')+'</label>';
+  const options=type==='link'?[...(data.records[key]||[])]:[];
+  if(type==='link'&&value&&!options.some(d=>d.id===value)&&record(key,value))options.push(record(key,value));
+  return '<label'+(type==='textarea'?' class="wide"':'')+'>'+escape(label)+(type==='link'?'<input type="search" data-link-search="'+key+'" data-target="'+key+'" aria-label="Find '+escape(label)+'" placeholder="Search records…"><select name="'+key+'" required>'+options.map(d=>'<option value="'+d.id+'"'+(value===d.id?' selected':'')+'>'+escape(d.values.Name)+'</option>').join('')+'</select>':type==='textarea'?'<textarea name="'+key+'" required>'+escape(value)+'</textarea>':'<input name="'+key+'" type="'+type+'" value="'+escape(value)+'" required>')+'</label>';
 }
 function registerForm(){
-  dialog('Add '+register.toLowerCase(),'<p class="help">Saved records are immutable. Add a new revision when details change.</p><form id="edit-form"><div class="form-grid">'+fields[register].map(([key,label,type])=>input(key,label,type)).join('')+'</div><button class="primary">Save '+register.toLowerCase()+'</button></form>');
-  $('edit-form').onsubmit=e=>{e.preventDefault();act('/register/'+register,Object.fromEntries(new FormData(e.target)));};
+  const definition=data.forms.find(f=>f.name===register);
+  dialog('Add '+register.toLowerCase(),'<p class="help">Saved records are immutable. Add a new revision when details change.</p><form id="edit-form"><div class="form-grid">'+LoomForms.html(definition,data.records)+'</div><button class="primary">Save '+register.toLowerCase()+'</button></form>');
+  LoomForms.bindLinks($('edit-form'),async(type,search)=>(await api(route('/records/'+type+'?take=25&search='+encodeURIComponent(search)))).items,e=>$('dialog-error').textContent=e.message);
+  $('edit-form').onsubmit=async e=>{e.preventDefault();try{await act('/register/'+register,await LoomForms.read(e.target,definition));}catch(error){$('dialog-error').textContent=error.message;}};
 }
 function requestForm(previous){
   const v=previous?.values||{};
@@ -126,10 +144,11 @@ function requestForm(previous){
     '<label>Assigned operator<select name="Operator" required>'+operators.map(m=>'<option>'+escape(m.userId)+'</option>').join('')+'</select></label>'+
     input('Starts','Reservation start (UTC)','datetime-local',defaultTime)+input('Ends','Reservation end (UTC)','datetime-local',new Date(Date.now()+3600000).toISOString().slice(0,16))+
     input('Cost','Estimated cost (USD)','text',v.Cost||'0.00')+'</div><button class="primary">Reserve and create request</button></form>');
+  LoomForms.bindLinks($('edit-form'),async(type,search)=>(await api(route('/records/'+type+'?take=25&search='+encodeURIComponent(search)))).items,e=>$('dialog-error').textContent=e.message);
   $('edit-form').onsubmit=e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target));body.Starts+=':00Z';body.Ends+=':00Z';if(previous)body.Amends=previous.id;act('/requests',body);};
 }
 function resultForm(d){
-  const procedure=data.records.Procedure.find(p=>p.id===d.values.Procedure).values;
+  const procedure=record('Procedure',d.values.Procedure).values;
   dialog('Record test results','<p class="help">'+escape(procedure.Instructions)+'</p><p>Acceptance: '+escape(procedure.Lower)+' to '+escape(procedure.Upper)+' '+escape(procedure.Unit)+'</p><form id="result-form"><div class="form-grid">'+input('Value','Measured value (exact decimal)')+input('Unit','Measurement unit','text',procedure.Unit)+input('Notes','Acquisition notes','textarea')+
     '<label>Raw evidence file (1 MiB maximum)<input name="file" type="file" required></label><label>External dataset URI (optional)<input name="Dataset" type="text" placeholder="https://… or tsdb://…"></label></div><button class="primary">Save evidence and submit for review</button></form>');
   $('result-form').onsubmit=async e=>{
@@ -148,9 +167,9 @@ function reviewForm(d,result){
   $('review-form').onsubmit=e=>{e.preventDefault();act('/requests/'+d.id+'/review',{version:d.version,approve:e.submitter.value==='approve',disposition:new FormData(e.target).get('Disposition')},()=>detail(d.id));};
 }
 $('login-form').onsubmit=async e=>{e.preventDefault();try{await api('/auth/login',Object.fromEntries(new FormData(e.target)));await session();}catch(error){notify(error);}};
-$('signout').onclick=async()=>{try{await api('/auth/logout',{});tenant='';data=null;await session();}catch(e){notify(e);}};
+$('signout').onclick=async()=>{try{await api('/auth/logout',{});tenant='';data=null;references={};$('dialog').close();$('dialog-body').innerHTML='';$('content').innerHTML='';await session();}catch(e){notify(e);}};
 $('tenant').onchange=async()=>{tenant=$('tenant').value;$('dialog').close();try{await load();}catch(e){notify(e);}};
-$('refresh').onclick=()=>load().catch(notify);$('search').oninput=()=>data&&render();$('filter').onchange=()=>render();
+$('refresh').onclick=()=>load().catch(notify);$('search').oninput=()=>data&&render();$('filter').onchange=()=>pageRecords('Request',0).catch(notify);
 $('create-request').onclick=()=>requestForm();$('close-dialog').onclick=()=>$('dialog').close();
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{view=b.dataset.view;$('search').value='';if(data)render();});
 (async()=>{

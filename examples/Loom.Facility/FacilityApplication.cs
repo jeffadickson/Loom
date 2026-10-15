@@ -14,7 +14,9 @@ public sealed record RequestInput(string Name,string Campaign,string Instrument,
     string Procedure,string Operator,string Starts,string Ends,string Cost,string? Amends=null);
 public sealed record ResultInput(int Version,string Value,string Unit,string Notes,string Waveform,string? Dataset=null);
 public sealed record ReviewInput(int Version,bool Approve,string Disposition);
-public sealed record FacilityOverview(string Tenant,string Role,Dictionary<string,IReadOnlyList<Document>> Records);
+public sealed record FacilityOverview(string Tenant,string Role,Dictionary<string,IReadOnlyList<Document>> Records,
+    Dictionary<string,int> Totals,Dictionary<string,int> RequestStates,DocumentForm[] Forms);
+public sealed record FacilityRequestDetail(Document Request,IReadOnlyList<Document> Results,IReadOnlyList<Document> Reviews,Dictionary<string,Document> References);
 
 /// <summary>
 /// The application boundary owns reservations, state transitions and evidence release.
@@ -73,20 +75,67 @@ public sealed class FacilityApplication
     {
         var schema=FacilityModel.Catalog.Get(type);var items=new List<Document>();Page page;
         do {
-            page=s.Query(type,new(schema.Fields.Single(f=>f.Name==schema.TitleField).Id!,Skip:items.Count,Take:200));
+            page=SummaryPage(s,type,items.Count,200);
             items.AddRange(page.Items);
         } while(items.Count<page.Total);
         return items;
     }
+    private static DocumentQuery SummaryQuery(string type,int skip=0,int take=25,string? search=null,FieldFilter[]? filters=null)
+    {
+        var schema=FacilityModel.Catalog.Get(type);
+        return new(schema.Fields.Single(f=>f.Name==schema.TitleField).Id!,Skip:skip,Take:take,Search:search,Filters:filters,
+            SelectFieldIds:schema.Fields.Where(f=>f.Type!="Binary").Select(f=>f.Id!).ToArray());
+    }
+    private static Page SummaryPage(TenantSession s,string type,int skip=0,int take=25,string? search=null,FieldFilter[]? filters=null)
+    {
+        var query=SummaryQuery(type,skip,take,search,filters);
+        var visible=s.Describe(type).Fields.Select(f=>f.Id).ToHashSet();
+        return s.Query(type,query with{SelectFieldIds=query.SelectFieldIds!.Where(visible.Contains).ToArray()});
+    }
+    /// <summary>Bounded initial pages and independent totals; no evidence/report payload is materialized.</summary>
     public FacilityOverview Overview(string user,string tenant)
     {
         using var s=Open(user,tenant);
-        return s.Atomic(t=>new FacilityOverview(tenant,t.Role,FacilityModel.Catalog.Types.Keys
-            .Where(type=>type!="Release"||t.Role!="Operator")
-            .ToDictionary(type=>type,type=>(IReadOnlyList<Document>)All(t,type).Select(d=>
+        return s.Atomic(t=>
+        {
+            var pages=FacilityModel.Catalog.Types.Keys.Where(type=>type!="Release"||t.Role!="Operator")
+                .ToDictionary(type=>type,type=>SummaryPage(t,type));
+            var schema=FacilityModel.Catalog.Get("Request");
+            var statusField=schema.Fields.Single(f=>f.Name=="Status");
+            var counts=statusField.Options!.ToDictionary(status=>status,status=>t.Query("Request",
+                SummaryQuery("Request",take:1,filters:[new(statusField.Id!,FilterOperator.Equal,JsonValue.Create(status))])
+                    with{SelectFieldIds=[]}).Total);
+            return new FacilityOverview(tenant,t.Role,pages.ToDictionary(p=>p.Key,p=>p.Value.Items),
+                pages.ToDictionary(p=>p.Key,p=>p.Value.Total),counts,FacilityModel.Registers.Select(t.Describe).ToArray());
+        });
+    }
+    public Page Browse(string user,string tenant,string type,int skip=0,int take=25,string? search=null,string? status=null)
+    {
+        using var s=Open(user,tenant);
+        FieldFilter[]? filters=null;
+        if(status!=null)
+        {
+            if(type!="Request")throw new LoomException(400,"Status filtering applies to requests.");
+            filters=[new(FacilityModel.Catalog.Get(type).Fields.Single(f=>f.Name=="Status").Id!,FilterOperator.Equal,JsonValue.Create(status))];
+        }
+        return SummaryPage(s,type,skip,take,search,filters);
+    }
+    /// <summary>Fetch related evidence summaries only for the selected request, with all attempts preserved.</summary>
+    public FacilityRequestDetail Detail(string user,string tenant,string id)
+    {
+        using var s=Open(user,tenant);
+        return s.Atomic(t=>
+        {
+            var request=t.Get("Request",id);
+            IReadOnlyList<Document> Related(string type)
             {
-                var copy=d.Copy();copy.Values.Remove("Waveform");copy.Values.Remove("Html");return copy;
-            }).ToArray())));
+                var field=FacilityModel.Catalog.Get(type).Fields.Single(f=>f.Name=="Request");var rows=new List<Document>();Page page;
+                do{page=SummaryPage(t,type,rows.Count,200,filters:[new(field.Id!,FilterOperator.Equal,JsonValue.Create(id))]);rows.AddRange(page.Items);}while(rows.Count<page.Total);
+                return rows;
+            }
+            return new FacilityRequestDetail(request,Related("Result"),Related("Review"),
+                new[]{"Campaign","Instrument","Calibration","Specimen","Procedure"}.ToDictionary(type=>type,type=>t.Get(type,Value(request,type))));
+        });
     }
     public IReadOnlyList<FacilityMember> Operators(string user,string tenant)
     {using var s=Open(user,tenant);_ = s.Role;return members.Where(m=>m.TenantId==tenant&&m.Role=="Operator").ToArray();}
@@ -113,10 +162,17 @@ public sealed class FacilityApplication
                 throw new LoomException(422,"Assign an operator who belongs to this laboratory.");
             var calibration=t.Get("Calibration",input.Calibration);
             CheckCalibration(calibration,input.Instrument,starts,ends);
-            foreach(var other in All(t,"Request").Where(d=>Value(d,"Status") is "Scheduled" or "Running" or "ChangesRequested"))
-                if((Value(other,"Instrument")==input.Instrument||Value(other,"Operator")==input.Operator) &&
-                   starts<Instant(Value(other,"Ends")) && ends>Instant(Value(other,"Starts")))
-                    throw new LoomException(409,"The instrument or operator already has an overlapping reservation.");
+            var schema=FacilityModel.Catalog.Get("Request");
+            FieldFilter Filter(string field,FilterOperator op,string value)=>new(schema.Fields.Single(f=>f.Name==field).Id!,op,JsonValue.Create(value));
+            foreach(var status in new[]{"Scheduled","Running","ChangesRequested"})
+                foreach(var resource in new[]{("Instrument",input.Instrument),("Operator",input.Operator)})
+                {
+                    var overlaps=t.Query("Request",SummaryQuery("Request",take:1,filters:[
+                        Filter("Status",FilterOperator.Equal,status),Filter(resource.Item1,FilterOperator.Equal,resource.Item2),
+                        Filter("Starts",FilterOperator.LessThan,ends.UtcDateTime.ToString("O")),
+                        Filter("Ends",FilterOperator.GreaterThan,starts.UtcDateTime.ToString("O"))]) with{SelectFieldIds=[]});
+                    if(overlaps.Total>0)throw new LoomException(409,"The instrument or operator already has an overlapping reservation.");
+                }
             if(input.Amends!=null && Value(t.Get("Request",input.Amends),"Status")!="Released")
                 throw new LoomException(422,"An amendment must refer to a released request.");
             return t.Create("Request",new()

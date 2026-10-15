@@ -122,6 +122,7 @@ public sealed class TenantSession : IDisposable
         return action(session);
     });
     public string Role=>actor().Role;
+    public DocumentForm Describe(string type)=>service.Describe(type,actor());
     public Page List(string type,string? search=null)=>service.List(type,actor(),search);
     public Page Query(string type,DocumentQuery query)=>service.Query(type,actor(),query);
     public Document Get(string type,string id)=>service.Get(type,id,actor());

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Test Facility Operations · Loom</title><link rel="stylesheet" href="facility.css"><script src="facility.js" defer></script></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Test Facility Operations · Loom</title><link rel="stylesheet" href="facility.css"><script src="loom-forms.js" defer></script><script src="facility.js" defer></script></head>
 <body>
 <a class="skip" href="#main">Skip to workspace</a>
 <aside class="sidebar"><a class="brand" href="facility.html"><span class="mark">F</span><span>FACILITY<span class="brand-sub">Test operations</span></span></a>
@@ -14,7 +14,7 @@
 <div id="app" hidden>
 <div class="page-heading"><div><span class="eyebrow" id="section-label">OPERATIONS DESK</span><h1 id="page-title">Test requests</h1><p id="page-description">Follow each test from its reservation to released evidence.</p></div><button id="create-request" class="primary">New test request</button></div>
 <section id="metrics" class="metrics" aria-label="Request summary"></section>
-<div class="toolbar"><label class="search-label">Search<input id="search" type="search" placeholder="Find a request, specimen or instrument…"></label><label id="filter-label">Status<select id="filter"><option value="">All states</option><option>Scheduled</option><option>Running</option><option>AwaitingReview</option><option>ChangesRequested</option><option>Approved</option><option>ReleaseQueued</option><option>Released</option><option>Cancelled</option></select></label><button id="refresh" class="quiet">Refresh</button></div>
+<div class="toolbar"><label class="search-label">Search this page<input id="search" type="search" placeholder="Find a request, specimen or instrument…"></label><label id="filter-label">Status<select id="filter"><option value="">All states</option><option>Scheduled</option><option>Running</option><option>AwaitingReview</option><option>ChangesRequested</option><option>Approved</option><option>ReleaseQueued</option><option>Released</option><option>Cancelled</option></select></label><button id="refresh" class="quiet">Refresh</button></div>
 <div id="content"></div>
 </div>
 <p id="notice" role="status" aria-live="polite"></p>

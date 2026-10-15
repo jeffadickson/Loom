@@ -41,6 +41,14 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
         public void Dispose() => active = false;
     }
 
+    /// <summary>Describe visible fields and allowed edits without exposing other roles' permission grants.</summary>
+    public DocumentForm Describe(string type,Actor actor)
+    {
+        var schema=Authorize(type,actor,"read");
+        return new(schema.Id!,schema.Name,schema.Label,Can(type,actor,"create"),!schema.Immutable&&Can(type,actor,"write"),
+            schema.Fields.Where(f=>CanReadField(f,actor)).Select(f=>f with{ReadOnly=f.ReadOnly||!(access?.CanWrite(f,actor)??true)}).ToArray());
+    }
+
     public bool CanReadField(Field field, Actor actor) => access?.CanRead(field, actor) ?? true;
     private Document Visible(DocType schema, Document document, Actor actor)
     {
@@ -79,6 +87,10 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
         var hidden = schema.Fields.Where(f => !CanReadField(f, actor)).Select(f => f.Id).ToHashSet();
         if (hidden.Contains(validated.SortFieldId) || validated.Filters!.Any(f => hidden.Contains(f.FieldId)) || hidden.Count > 0 && !string.IsNullOrWhiteSpace(validated.Search))
             throw new LoomException(403, "Query would inspect a restricted field.");
+        if(validated.SelectFieldIds?.Any(hidden.Contains)==true)
+            throw new LoomException(403,"Projection requests a restricted field.");
+        // Default reads redact at the provider boundary, so hidden blobs are never materialized.
+        validated=validated with{SelectFieldIds=validated.SelectFieldIds??schema.Fields.Where(f=>!hidden.Contains(f.Id)).Select(f=>f.Id!).ToArray()};
         validated = validated with { Filters = validated.Filters!.Concat(access?.Scope(schema, actor) ?? []).ToArray() };
         return store.Transaction(s => { var page = s.Query(schema, validated); return page with { Items = page.Items.Select(d => Visible(schema, d, actor)).ToArray() }; });
     }
@@ -152,7 +164,7 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
             if (old.State != "Draft") throw new LoomException(409, "Only drafts can be deleted.");
             foreach (var other in catalog.Types.Values)
                 foreach (var f in other.Fields.Where(f => f.Type == "Link" && f.Target == type))
-                    if (s.Query(other, new DocumentQuery(f.Id!, Take:1, Filters:[new(f.Id!,FilterOperator.Equal,JsonValue.Create(id))])).Total > 0) throw new LoomException(409, "Document is referenced; remove links first.");
+                    if (s.Query(other, new DocumentQuery(f.Id!, Take:1, Filters:[new(f.Id!,FilterOperator.Equal,JsonValue.Create(id))],SelectFieldIds:[])).Total > 0) throw new LoomException(409, "Document is referenced; remove links first.");
             s.Delete(type, id, version); Audit(s, actor, "delete", old, null); return 0;
         });
     }
@@ -196,7 +208,7 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
                 values[f.Name]=text;
             }
             else values[f.Name]=FieldValues.Normalize(f,node!);
-            if (f.Unique && session.Query(schema, new DocumentQuery(f.Id!, Take:2, Filters:[new(f.Id!,FilterOperator.Equal,values[f.Name]?.DeepClone())])).Items.Any(d => d.Id != id))
+            if (f.Unique && session.Query(schema, new DocumentQuery(f.Id!, Take:2, Filters:[new(f.Id!,FilterOperator.Equal,values[f.Name]?.DeepClone())],SelectFieldIds:[])).Items.Any(d => d.Id != id))
                 throw new LoomException(409, f.Label + " must be unique.");
         }
         if(schema.Fields.Where(f=>f.Type=="Binary").Sum(f=>(long)(values[f.Name]==null?0:Convert.FromBase64String(values[f.Name]!.ToString()).Length))>FieldValues.MaxBinaryBytes)

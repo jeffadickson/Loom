@@ -54,6 +54,10 @@ public sealed class MemoryStore : IDocumentStore, IStoreSession
             catch { documents = old; audit = oldAudit; throw; }
         }
     }
+    public Page Query(DocType schema,DocumentQuery query)
+    {
+        lock(gate)return Queries.Execute(documents.Values.Where(d=>d.Type==schema.Name),schema,query);
+    }
     private static string Key(string type, string id) => type + "/" + id;
     public Document? Get(string type, string id) => documents.GetValueOrDefault(Key(type, id))?.Copy();
     public IReadOnlyList<Document> List(string type) => documents.Values.Where(x => x.Type == type).Select(x => x.Copy()).ToList();

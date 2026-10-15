@@ -111,7 +111,16 @@ public sealed partial class ServerDocumentStore : IDocumentStore, IMigrationStor
         public Page Query(DocType schema,DocumentQuery query)
         {
             var accepted=catalog.Get(schema.Name);query=Queries.Validate(accepted,query);
-            return ServerQueries.TryExecute(db,accepted,query)??Queries.Execute(List(accepted.Name),accepted,query);
+            var page=ServerQueries.TryExecute(db,accepted,query);
+            if(page!=null)return page;
+            // Reference search needs scalar fields, but never fetches an unrequested binary payload.
+            var required=accepted.Fields.Where(f=>f.Type is not ("Binary" or "Measurement") ||
+                query.SelectFieldIds==null || query.SelectFieldIds.Contains(f.Id!)).Select(f=>f.Id!).ToArray();
+            var body=ServerQueries.ProjectBody(accepted,required,db.Database.IsSqlServer());
+            var rows=db.Documents.FromSqlRaw("SELECT kind,id,version,"+body+" AS body FROM loom_documents WHERE kind={0}",accepted.Name)
+                .AsNoTracking().OrderBy(d=>d.Id).Take(10001).Select(d=>d.Body).ToArray();
+            if(rows.Length>10000)throw new LoomException(422,"Server reference query exceeds initial provider scan limit.");
+            return Queries.Execute(rows.Select(json=>JsonSerializer.Deserialize<Document>(json,Catalog.Json)!),accepted,query);
         }
         public IReadOnlyList<Document> List(string type)
         {

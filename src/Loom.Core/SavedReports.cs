@@ -21,9 +21,12 @@ public static class SavedReports
             throw new LoomException(422, "Reports need distinct columns.");
         var fields = report.Columns.Select(c => Resolve(c.FieldId)).ToArray();
         if(fields.Any(f => !service.CanReadField(f,actor))) throw new LoomException(403,"Report contains a restricted field.");
-        var page = service.List(type.Name, actor, sort: report.SortFieldId == null ? null : Resolve(report.SortFieldId).Name,
-            descending: report.Descending, take: 200, field: report.Filter == null ? null : Resolve(report.Filter.FieldId).Name,
-            equals: report.Filter?.Value);
+        var sort=report.SortFieldId==null?type.Fields.Single(f=>f.Name==type.TitleField):Resolve(report.SortFieldId);
+        FieldFilter[] filters=report.Filter==null?[]:[new(Resolve(report.Filter.FieldId).Id!,
+            string.IsNullOrEmpty(report.Filter.Value)?FilterOperator.IsNull:FilterOperator.Equal,
+            string.IsNullOrEmpty(report.Filter.Value)?null:JsonValue.Create(report.Filter.Value))];
+        var page=service.Query(type.Name,actor,new(sort.Id!,report.Descending,Take:200,Filters:filters,
+            SelectFieldIds:fields.Select(f=>f.Id!).ToArray()));
         if (page.Total > 200) throw new LoomException(422, "Report exceeds 200 rows; refine its filter.");
         var rows = new JsonArray();
         foreach (var document in page.Items)

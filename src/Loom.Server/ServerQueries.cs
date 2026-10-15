@@ -8,6 +8,18 @@ namespace Loom.Server;
 // retains the reference implementation; scalar ordering is provider-side.
 internal static class ServerQueries
 {
+    /// <summary>Strip excluded JSON fields on the server, before EF materializes the document body.</summary>
+    internal static string ProjectBody(DocType schema,string[]? selected,bool sqlServer)
+    {
+        var body="body";
+        if(selected==null)return body;
+        foreach(var field in schema.Fields.Where(f=>!selected.Contains(f.Id!)))
+        {
+            Catalog.Identifier(field.Name);
+            body=sqlServer?$"JSON_MODIFY({body}, '$.values.{field.Name}', NULL)":$"({body}::jsonb #- ARRAY['values','{field.Name}'])";
+        }
+        return sqlServer?body:$"({body})::text";
+    }
     public static Page? TryExecute(LoomDbContext db,DocType schema,DocumentQuery query)
     {
         bool sqlServer=db.Database.IsSqlServer();
@@ -54,7 +66,7 @@ internal static class ServerQueries
         }
         var extract = sqlServer ? " OUTER APPLY OPENJSON(body) WITH (" + string.Join(",", schema.Fields.Where(Text).Select(f => $"f_{f.Id} nvarchar(max) '$.values.{f.Name}'")) + ") j" : "";
         if (sqlServer && !schema.Fields.Any(Text)) extract = "";
-        var select="SELECT kind,id,version,body FROM loom_documents" + extract + " WHERE "+string.Join(" AND ",predicates);
+        var select="SELECT kind,id,version,"+ProjectBody(schema,query.SelectFieldIds,sqlServer)+" AS body FROM loom_documents" + extract + " WHERE "+string.Join(" AND ",predicates);
         int count;
         try { count=db.Documents.FromSqlRaw(select,parameters.ToArray()).Count(); }
         catch (System.Data.Common.DbException ex) { throw new InvalidOperationException("Provider query failed: " + select, ex); }

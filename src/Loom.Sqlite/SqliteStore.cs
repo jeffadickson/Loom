@@ -77,8 +77,10 @@ public sealed partial class SqliteStore : IDocumentStore, IMigrationStore
             var where=clauses.Count==0?"":" WHERE "+string.Join(" AND ",clauses);
             using var count=Command("SELECT COUNT(*) FROM "+Q(schema.Name)+where,parameters.ToArray());
             int total=checked(Convert.ToInt32(count.ExecuteScalar()));
-            using var command=Command("SELECT * FROM "+Q(schema.Name)+where+" ORDER BY "+Column(fields[query.SortFieldId])+(query.Descending?" DESC":" ASC")+", id COLLATE loom_ordinal LIMIT $take OFFSET $skip",[..parameters,("$take",query.Take),("$skip",query.Skip)]);
-            using var reader=command.ExecuteReader();var rows=new List<Document>();while(reader.Read())rows.Add(Read(reader,schema));return new(total,rows);
+            var selected=query.SelectFieldIds==null?schema.Fields:schema.Fields.Where(f=>query.SelectFieldIds.Contains(f.Id!)).ToArray();
+            var columns=string.Join(",",new[]{"id","version","state","createdAt","modifiedAt"}.Concat(selected.Select(f=>f.Name)).Select(Q));
+            using var command=Command("SELECT "+columns+" FROM "+Q(schema.Name)+where+" ORDER BY "+Column(fields[query.SortFieldId])+(query.Descending?" DESC":" ASC")+", id COLLATE loom_ordinal LIMIT $take OFFSET $skip",[..parameters,("$take",query.Take),("$skip",query.Skip)]);
+            using var reader=command.ExecuteReader();var rows=new List<Document>();while(reader.Read())rows.Add(Read(reader,schema,selected));return new(total,rows);
         }
         public Document? Get(string type, string id)
         {
@@ -95,10 +97,10 @@ public sealed partial class SqliteStore : IDocumentStore, IMigrationStore
             if (rows.Count > 10000) throw new LoomException(422, "Prototype scan limit reached; implement provider-side queries before scaling.");
             return rows;
         }
-        private static Document Read(SqliteDataReader r, DocType schema)
+        private static Document Read(SqliteDataReader r, DocType schema,Field[]? selected=null)
         {
             var values = new JsonObject();
-            foreach (var f in schema.Fields)
+            foreach (var f in selected??schema.Fields)
             {
                 var i = r.GetOrdinal(f.Name);
                 values[f.Name] = r.IsDBNull(i) ? null : f.Type switch

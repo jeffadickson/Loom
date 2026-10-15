@@ -149,9 +149,10 @@ Browser verification is included in the normal MSBuild BrowserTest target and CI
 ## Remaining scope
 
 The initial fixture is deliberately small. The proposed 50-instrument/200-specimen/1,000-run
-scale exercise is not yet a measured acceptance result. Overview currently loads all records,
-including decoding evidence before removing binary fields from its response; server-side projection,
-paging and streaming are required before large datasets.
+scale exercise is not yet a measured acceptance result. Overview now uses database-side field selection and 25-record pages, with separate total/status
+counts. Evidence and release HTML are omitted before materialization. Register forms are generated
+from role-filtered metadata. See QUERY_PROJECTIONS_FORMS.md. Streaming and measured scale testing
+remain required before large datasets.
 
 Further work includes multi-instrument reservations, membership administration, certificate
 attachments, generalized discrepancy/provenance models, native PDF export, OpenTelemetry,

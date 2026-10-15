@@ -128,6 +128,24 @@ public sealed class FacilityApplicationTests : IDisposable
         Assert.Equal(422,Assert.Throws<LoomException>(()=>app.Schedule("north-manager","north",Input(original) with{Amends=original.Id})).Status);
     }
 
+    [Fact] public void OverviewAndBrowseStayBoundedWhileCountsCoverAllRequests()
+    {
+        var app=App();var original=Request(app);
+        for(var i=0;i<30;i++)app.Schedule("north-manager","north",Input(original,"Paged request "+i.ToString("D2")) with
+        {Starts=clock.GetUtcNow().AddHours(9+i*2).UtcDateTime.ToString("O"),Ends=clock.GetUtcNow().AddHours(10+i*2).UtcDateTime.ToString("O")});
+        var overview=app.Overview("north-manager","north");
+        Assert.Equal(25,overview.Records["Request"].Count);Assert.Equal(31,overview.Totals["Request"]);
+        Assert.Equal(31,overview.RequestStates["Scheduled"]);
+        var last=app.Browse("north-manager","north","Request",25,25);
+        Assert.Equal(31,last.Total);Assert.Equal(6,last.Items.Count);
+        Assert.Empty(last.Items.Select(d=>d.Id).Intersect(overview.Records["Request"].Select(d=>d.Id)));
+        var detail=app.Detail("north-operator","north",last.Items[0].Id);
+        Assert.False(detail.Request.Values.ContainsKey("Cost"));Assert.Equal(5,detail.References.Count);
+        var campaign=Assert.Single(overview.Forms,f=>f.Name=="Campaign");
+        Assert.True(campaign.CanCreate);Assert.False(campaign.CanEdit);
+        Assert.DoesNotContain(app.Overview("north-operator","north").Forms.Single(f=>f.Name=="Campaign").Fields,f=>f.Name=="Budget");
+    }
+
     public void Dispose()=>Directory.Delete(root,true);
     private sealed class FixedClock(DateTimeOffset now):TimeProvider
     {public override DateTimeOffset GetUtcNow()=>now;}

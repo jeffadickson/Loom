@@ -239,3 +239,16 @@ Facility release jobs use the same tenant transaction for immutable HTML snapsho
 completion. This supports restart recovery and concurrent-worker rechecks without external side
 effects. It is intentionally bounded local report work, not the generalized scheduler in issue #24.
 See FACILITY_OPERATIONS.md for the security boundary, role matrix and remaining scale limitations.
+
+## Query projection and form metadata
+
+DocumentQuery.SelectFieldIds uses schema identities to separate the read shape from filter/sort
+fields. Validation and authorization precede provider execution. SQLite reads explicit columns;
+server JSON stores strip omitted properties before EF materialization; Memory copies selected
+values only. Null selection preserves compatibility; empty selection supports identity-only
+existence checks. Saved reports select their own columns. See QUERY_PROJECTIONS_FORMS.md for
+server fallback limits and the distinction between returned bytes and physical storage reads.
+
+DocumentService.Describe supplies a role-filtered DocumentForm contract. The shared browser form
+renderer consumes field definitions directly; application workflow actions remain handwritten C#.
+Facility lists are bounded, with separate totals and on-demand request detail.

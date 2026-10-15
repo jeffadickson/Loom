@@ -49,6 +49,8 @@ internal static class FacilityEndpoints
         app.MapGet("/api/facility/memberships",(HttpContext c)=>facility.Memberships(User(c)));
         var routes=app.MapGroup("/api/facility/{tenant}");
         routes.MapGet("/overview",(HttpContext c,string tenant)=>WireJson.Encode(facility.Overview(User(c),tenant)));
+        routes.MapGet("/records/{type}",(HttpContext c,string tenant,string type,int? skip,int? take,string? search,string? status)=>WireJson.Encode(facility.Browse(User(c),tenant,type,skip??0,take??25,search,status)));
+        routes.MapGet("/requests/{id}",(HttpContext c,string tenant,string id)=>WireJson.Encode(facility.Detail(User(c),tenant,id)));
         routes.MapGet("/operators",(HttpContext c,string tenant)=>facility.Operators(User(c),tenant));
         routes.MapPost("/register/{type}",(HttpContext c,string tenant,string type,JsonObject values)=>WireJson.Encode(facility.Register(User(c),tenant,type,values)));
         routes.MapPost("/requests",(HttpContext c,string tenant,RequestInput input)=>WireJson.Encode(facility.Schedule(User(c),tenant,input)));

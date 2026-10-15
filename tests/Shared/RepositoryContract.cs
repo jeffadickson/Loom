@@ -18,6 +18,26 @@ public abstract class RepositoryContract
     {
         var model=Model();store.Migrate(model);return new(model,store,[]);
     }
+    [Fact] public void ProjectionPreservesFilteringPagingAndExactSelectedValues()
+    {
+        using var store=Open();var service=Service(store);var schema=Model().Get("Reading");
+        var name=schema.Fields.Single(f=>f.Name=="Name").Id!;var cost=schema.Fields.Single(f=>f.Name=="Cost").Id!;
+        var payload=schema.Fields.Single(f=>f.Name=="Payload").Id!;
+        for(var i=0;i<3;i++)service.Create("Reading",new(){["Name"]="Run "+i,["Cost"]="12345678901234567.89",["Payload"]=Convert.ToBase64String([1,2,3])},Admin);
+        var query=new DocumentQuery(name,Skip:1,Take:1,Filters:[new(cost,FilterOperator.Equal,JsonValue.Create("12345678901234567.89"))],SelectFieldIds:[name,cost]);
+        var page=service.Query("Reading",Admin,query);
+        Assert.Equal(3,page.Total);var row=Assert.Single(page.Items);Assert.Equal("Run 1",row.Values["Name"]!.ToString());
+        Assert.Equal("12345678901234567.89",row.Values["Cost"]!.ToString());Assert.False(row.Values.ContainsKey("Payload"));
+        var search=service.Query("Reading",Admin,query with{Search="Run 2",Skip=0});
+        Assert.Equal("Run 2",Assert.Single(search.Items).Values["Name"]!.ToString());
+        var count=service.Query("Reading",Admin,query with{SelectFieldIds=[]});
+        Assert.Equal(3,count.Total);Assert.Empty(Assert.Single(count.Items).Values);
+        var binary=service.Query("Reading",Admin,query with{SelectFieldIds=[payload]});
+        Assert.Equal(Convert.ToBase64String([1,2,3]),Assert.Single(binary.Items).Values["Payload"]!.ToString());
+        Assert.Equal(400,Assert.Throws<LoomException>(()=>service.Query("Reading",Admin,query with{SelectFieldIds=["unknown"]})).Status);
+        Assert.Equal(400,Assert.Throws<LoomException>(()=>service.Query("Reading",Admin,query with{SelectFieldIds=[name,name]})).Status);
+    }
+
     [Fact] public void Exact_values_binary_and_measurements_survive_round_trip()
     {
         using var store=Open();var service=Service(store);

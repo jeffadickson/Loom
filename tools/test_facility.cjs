@@ -26,12 +26,24 @@ const fs=require('node:fs');
   assert.equal(bypass.status(),403);
   await page.getByRole('button',{name:'Facility register',exact:false}).click();
   await page.getByRole('button',{name:'Add instrument',exact:true}).click();
-  await page.getByLabel('Instrument name',{exact:true}).fill('Browser-created reference meter');
-  await page.getByLabel('Serial number',{exact:true}).fill('BROWSER-001');
+  await page.getByLabel('Name',{exact:true}).fill('Browser-created reference meter');
+  await page.getByLabel('Serial',{exact:true}).fill('BROWSER-001');
   await page.getByLabel('Location',{exact:true}).fill('Metrology bench');
   await page.getByRole('button',{name:'Save instrument',exact:true}).click();
   await page.locator('#dialog').waitFor({state:'hidden'});
   await page.getByText('Browser-created reference meter',{exact:true}).waitFor();
+  for(let i=0;i<30;i++){
+   const response=await page.request.post(origin+'/api/facility/north/register/Instrument',{headers:{'X-Loom-Demo':'local'},
+    data:{Name:'ZZ Meter '+String(i).padStart(2,'0'),Serial:'PAGED-'+i,Location:'Metrology'}});
+   assert.equal(response.status(),200);
+  }
+  await page.locator('#refresh').click();
+  await page.getByText('Records 1–25 of 32',{exact:true}).waitFor();
+  await page.locator('[data-page-type=Instrument][data-offset="25"]').click();
+  await page.getByText('ZZ Meter 29',{exact:true}).waitFor();
+  await page.locator('[data-page-type=Instrument][data-offset="0"]').click();
+  await page.getByText('Browser-created reference meter',{exact:true}).waitFor();
+
   await page.getByRole('button',{name:'Test requests',exact:false}).click();
   await page.getByRole('button',{name:'New test request',exact:true}).click();
   await page.getByLabel('Request title',{exact:true}).fill('TR-002 · Follow-up stability');
@@ -39,6 +51,9 @@ const fs=require('node:fs');
   await page.getByLabel('Reservation end (UTC)',{exact:true}).fill(new Date(Date.now()+10*3600000).toISOString().slice(0,16));
   await page.getByLabel('Estimated cost (USD)',{exact:true}).fill('1234567890123.45');
   // The new meter sorts first; choose the calibrated chamber explicitly.
+  await page.getByRole('searchbox',{name:'Find Instrument',exact:true}).fill('ZZ Meter 29');
+  await page.locator('[name=Instrument]').selectOption({label:'ZZ Meter 29'});
+  await page.getByRole('searchbox',{name:'Find Instrument',exact:true}).fill('Thermal chamber');
   await page.locator('[name=Instrument]').selectOption({label:'Thermal chamber TC-04'});
   await page.getByRole('button',{name:'Reserve and create request',exact:true}).click();
   await page.locator('#dialog').waitFor({state:'hidden'});
@@ -46,6 +61,7 @@ const fs=require('node:fs');
   await logout();await login('north-operator');
   await page.getByRole('button',{name:'Test requests',exact:false}).click();
   await page.locator('[data-request="'+id+'"]').click();
+  await page.getByRole('button',{name:'Start test',exact:true}).waitFor();
   assert.equal(await page.locator('#dialog').getByText('Estimated cost (USD)',{exact:true}).count(),0);
   await page.getByRole('button',{name:'Start test',exact:true}).click();
   await page.getByRole('button',{name:'Record results',exact:true}).click();

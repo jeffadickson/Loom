@@ -286,3 +286,15 @@ events, durable workflow scheduling and arbitrary application jobs remain open i
 - Desktop and mobile browser verification shall exercise actual accounts and API behavior.
 
 Implemented initial scope and remaining scale/integration goals are in FACILITY_OPERATIONS.md.
+
+## Read projection and metadata forms (QUERY-02 / FORM-02)
+
+- Queries shall support explicit stable field IDs, preserve complete matching counts, and distinguish
+  omitted fields from null values. Unknown/duplicate/unauthorized selections shall fail closed.
+- Providers shall avoid materializing omitted blobs. Filtering and sorting may use omitted authorized
+  scalar fields. Existing row/field policies apply independently of the selected output shape.
+- Scalar saved reports and uniqueness/link existence checks shall not load unrelated evidence.
+- Form descriptions shall derive from accepted schema metadata and the caller's permissions;
+  immutable records shall not advertise edits. Server validation remains authoritative.
+- Facility lists shall page at 25 records and display global totals. Link lookup shall reach records
+  outside the first page. Register field definitions shall not be duplicated in application JavaScript.
