@@ -31,6 +31,8 @@ if (args.Contains("--hash-password"))
     if (password.Length < 12) throw new InvalidOperationException("Use at least 12 characters.");
     Console.WriteLine(new PasswordHasher<LoomAccount>().HashPassword(new("", "Viewer", ""), password)); return;
 }
+var facilityDemo=args.Contains("--facility-demo");
+if(facilityDemo)FacilityEndpoints.ConfigureDemo(builder);
 var identityEnabled = builder.Configuration["Authentication:Mode"] == "Identity";
 if(identityEnabled) builder.AddLoomIdentity();
 var accountsEnabled = identityEnabled || AccountAuthentication.Configure(builder);
@@ -49,7 +51,7 @@ if(administratorArgument!=null)
     await identityHost.CreateAdministratorAsync(administratorArgument["--identity-admin=".Length..],password);
     Console.WriteLine("Administrator created.");return;
 }
-var memoryDemo=args.Contains("--memory-demo");
+var memoryDemo=args.Contains("--memory-demo")||facilityDemo;
 var scienceDemo=memoryDemo||args.Contains("--science-demo");
 if(memoryDemo)builder.Configuration["Database:Provider"]="Memory";
 var modelSource = builder.Configuration["Models:Source"] ?? "Json";
@@ -110,6 +112,7 @@ foreach (var hook in hooks)
     if (hook.RequiredFields.Any(name => !catalog.Get(hook.Type).Fields.Any(f => f.Name == name)))
         throw new InvalidOperationException("Stored model is incompatible with C# hook dependencies.");
 IDocumentAccessPolicy? access = accountsEnabled ? new LaboratoryAccessPolicy() : null;
+var facility=FacilityEndpoints.Configure(builder,facilityDemo,accountsEnabled);
 var tenantWorkspace=TenantEndpoints.Configure(builder,catalog,hooks,access,accountsEnabled);
 var service = new DocumentService(catalog, store, hooks, access);
 var admin = new Actor("demo-admin", "Admin");
@@ -189,6 +192,7 @@ else
 }
 if(identityEnabled) app.Use(async(c,next)=> { if(c.Request.Path=="/login.html"){c.Response.Redirect("/Identity/Account/Login");return;}await next(); });
 TenantEndpoints.Map(app,tenantWorkspace);
+FacilityEndpoints.Map(app,facility,facilityDemo);
 app.UseDefaultFiles(); app.UseStaticFiles();
 app.MapGet("/api/meta", (HttpContext c) =>
 {

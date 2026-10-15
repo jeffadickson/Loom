@@ -312,3 +312,13 @@ The scientific demo now links instruments, specimens, runs and results, with a p
 ## Account lifecycle
 
 Use `Authentication__Mode=Identity` for persistent accounts, registration and email verification, password change/reset, authenticator MFA and administrator-managed roles/disablement. See [Identity setup and security boundaries](docs/IDENTITY.md). The older `Accounts` mode remains a limited compatibility demo.
+
+
+### Test Facility Operations application
+
+Run `dotnet run --project src/Loom.Demo -- --facility-demo` and open
+http://127.0.0.1:5080/facility.html. Two laboratories, six local example accounts, reservations,
+calibration checks, raw evidence, independent review and durable report release run on real Loom
+tenant databases. The page includes the explicit local-demo credentials.
+
+[Application operating guide](docs/FACILITY_OPERATIONS.md).

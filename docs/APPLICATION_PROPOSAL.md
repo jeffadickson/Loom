@@ -1,7 +1,9 @@
 # Proposed proving application: Test Facility Operations
 
 Build a substantial application on Loom for managing a shared engineering test facility.
-This is a proposal, not an implemented application or a claim of flight qualification.
+The initial application is implemented in `examples/Loom.Facility` and hosted at `/facility.html`.
+See [the operating guide](FACILITY_OPERATIONS.md) for execution, verification and remaining scope.
+The scale targets and broader integrations below remain future acceptance goals; this is not a claim of flight qualification.
 
 ## One complete operating cycle
 
@@ -60,5 +62,5 @@ more effectively than adding another isolated CRUD demonstration.
 Scheduling/conflict rules, general durable jobs, richer approval workflows, immutable provenance
 graphs, attachment streaming, report pagination and production observability remain work.
 Track those as explicit Loom tasks; keep application-specific procedures and acceptance limits
-inside the application repository. Choose the application repository/name only when this proposal
-is accepted.
+inside the application module. The accepted initial implementation lives in the Loom repository
+so its build and verification remain coupled to framework changes.

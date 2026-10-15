@@ -112,6 +112,15 @@ public sealed class TenantSession : IDisposable
     private readonly DocumentService service;
     internal TenantSession(SqliteStore store,Catalog catalog,Func<Actor> actor,IDocumentHook[] hooks,IDocumentAccessPolicy? access)
     {this.store=store;this.catalog=catalog;this.actor=actor;service=new(catalog,store,hooks,access);}
+    private bool ownsStore = true;
+    private TenantSession(SqliteStore store,Catalog catalog,Func<Actor> actor,DocumentService service)
+    { this.store=store;this.catalog=catalog;this.actor=actor;this.service=service;ownsStore=false; }
+    /// <summary>Atomic, tenant-bound application workflow; the callback session expires on return.</summary>
+    public T Atomic<T>(Func<TenantSession,T> action) => service.Atomic(scoped =>
+    {
+        using var session=new TenantSession(store,catalog,actor,scoped);
+        return action(session);
+    });
     public string Role=>actor().Role;
     public Page List(string type,string? search=null)=>service.List(type,actor(),search);
     public Page Query(string type,DocumentQuery query)=>service.Query(type,actor(),query);
@@ -124,9 +133,14 @@ public sealed class TenantSession : IDisposable
     public ReportResult Report(SavedReport report)=>SavedReports.Run(report,catalog,service,actor());
     public ReportDesign? ReadReportDesign(string typeId)
     {
+        if(!ownsStore)throw new InvalidOperationException("Report designs cannot join a document transaction.");
         if(actor().Role!="Admin")throw new LoomException(403,"Tenant administrator required.");
         return store.ReadReportDesign(typeId);
     }
-    public ReportDesign SaveReportDesign(string typeId,ReportDesign design)=>store.SaveReportDesign(typeId,design,actor());
-    public void Dispose()=>store.Dispose();
+    public ReportDesign SaveReportDesign(string typeId,ReportDesign design)
+    {
+        if(!ownsStore)throw new InvalidOperationException("Report designs cannot join a document transaction.");
+        return store.SaveReportDesign(typeId,design,actor());
+    }
+    public void Dispose(){if(ownsStore)store.Dispose();}
 }

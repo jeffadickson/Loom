@@ -222,3 +222,20 @@ Do not put tenant-owned data in the original workspace. Production applications 
 expose only tenant routes when all their data is tenant-owned. Shared Identity accounts,
 email outbox and Data Protection keys require a separate coordinated backup policy.
 There is no cross-provider transfer, identity backup or automatic fleet migration claim.
+
+## Facility application and atomic document operations
+
+The example application in `examples/Loom.Facility` owns its catalog, immutable register revisions,
+scientific validation, reservation rules, review independence and release workflow. The existing
+demo host supplies cookie/Identity authentication and the `/facility.html` browser UI; a separate
+TenantWorkspace prevents generic document routes from bypassing application state transitions.
+
+`DocumentService.Atomic` wraps the provider session in a transaction-bound service; nested document
+operations retain the ordinary validation, role/field policies and audit behavior without opening
+nested provider transactions. The wrapper expires after the callback. `TenantSession.Atomic`
+retains membership resolution on each operation and disallows report-design mutation in the callback.
+
+Facility release jobs use the same tenant transaction for immutable HTML snapshot creation and
+completion. This supports restart recovery and concurrent-worker rechecks without external side
+effects. It is intentionally bounded local report work, not the generalized scheduler in issue #24.
+See FACILITY_OPERATIONS.md for the security boundary, role matrix and remaining scale limitations.

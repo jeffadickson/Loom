@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
+    <ProjectReference Include="../../examples/Loom.Facility/Loom.Facility.csproj" />
     <Content Remove="data/**" />
     <None Remove="data/**" />
     <ProjectReference Include="../Loom.Sqlite/Loom.Sqlite.csproj" />

@@ -563,6 +563,12 @@
       "loom.core": {
         "type": "Project"
       },
+      "loom.facility": {
+        "type": "Project",
+        "dependencies": {
+          "Loom.Sqlite": "[1.0.0, )"
+        }
+      },
       "loom.identity": {
         "type": "Project",
         "dependencies": {

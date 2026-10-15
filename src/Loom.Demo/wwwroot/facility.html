@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Test Facility Operations · Loom</title><link rel="stylesheet" href="facility.css"><script src="facility.js" defer></script></head>
+<body>
+<a class="skip" href="#main">Skip to workspace</a>
+<aside class="sidebar"><a class="brand" href="facility.html"><span class="mark">F</span><span>FACILITY<span class="brand-sub">Test operations</span></span></a>
+<p class="nav-label">WORKSPACE</p><nav aria-label="Workspace"><button data-view="requests" class="selected">Test requests <span>01</span></button><button data-view="register">Facility register <span>02</span></button><button data-view="releases">Reports &amp; queue <span>03</span></button></nav>
+<div class="sidebar-bottom"><span class="status-dot"></span> Powered by Loom<p>Traceable work.<br>From request to release.</p><a href="introduction.html">About the framework ↗</a></div></aside>
+<div class="workspace"><header><div><span class="eyebrow">ENGINEERING / TEST OPERATIONS</span><p id="identity">Sign in to your laboratory</p></div><div class="session-controls"><label>Laboratory<select id="tenant" aria-label="Laboratory"></select></label><button id="signout" class="quiet" hidden>Sign out</button></div></header>
+<main id="main">
+<section id="login" class="login panel"><span class="eyebrow">WELCOME TO THE FACILITY</span><h1>Keep the whole test<br>in view.</h1><p>Equipment, evidence and independent review in one laboratory workspace.</p>
+<form id="login-form"><label>Account<input name="id" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="primary">Sign in</button></form>
+<div id="demo-accounts" hidden><p class="eyebrow">LOCAL DEMONSTRATION · SYNTHETIC DATA</p><p>Choose an account, then sign in. Use the operator to run a test, the reviewer to approve it, and the manager to release it.</p><label>Example account<select id="demo-user"></select></label><p>Demo password: <code>Loom-facility-demo!</code></p></div>
+<a id="identity-login" href="/Identity/Account/Login" hidden>Sign in with the configured Identity provider</a></section>
+<div id="app" hidden>
+<div class="page-heading"><div><span class="eyebrow" id="section-label">OPERATIONS DESK</span><h1 id="page-title">Test requests</h1><p id="page-description">Follow each test from its reservation to released evidence.</p></div><button id="create-request" class="primary">New test request</button></div>
+<section id="metrics" class="metrics" aria-label="Request summary"></section>
+<div class="toolbar"><label class="search-label">Search<input id="search" type="search" placeholder="Find a request, specimen or instrument…"></label><label id="filter-label">Status<select id="filter"><option value="">All states</option><option>Scheduled</option><option>Running</option><option>AwaitingReview</option><option>ChangesRequested</option><option>Approved</option><option>ReleaseQueued</option><option>Released</option><option>Cancelled</option></select></label><button id="refresh" class="quiet">Refresh</button></div>
+<div id="content"></div>
+</div>
+<p id="notice" role="status" aria-live="polite"></p>
+</main><footer>Test Facility Operations <span>Evidence is retained. Every workflow change is audited.</span></footer></div>
+<dialog id="dialog" aria-labelledby="dialog-title"><div class="dialog-heading"><div><span class="eyebrow" id="dialog-eyebrow">TEST OPERATIONS</span><h2 id="dialog-title"></h2></div><button id="close-dialog" class="quiet" aria-label="Close dialog">Close</button></div><div id="dialog-body"></div><p id="dialog-error" role="alert"></p></dialog>
+</body></html>

@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup><ProjectReference Include="../../src/Loom.Sqlite/Loom.Sqlite.csproj" /></ItemGroup>
+</Project>

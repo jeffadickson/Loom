@@ -12,6 +12,35 @@ public interface IDocumentHook
 public sealed record Page(int Total, IReadOnlyList<Document> Items);
 public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnumerable<IDocumentHook> hooks, IDocumentAccessPolicy? access = null)
 {
+    /// <summary>Runs multiple authorized operations in one provider transaction. Do not retain the scoped service.</summary>
+    public T Atomic<T>(Func<DocumentService,T> action)
+    {
+        // Async callbacks would commit before awaited work finishes. Reject before invoking user code.
+        var resultType=typeof(T);
+        if(typeof(Task).IsAssignableFrom(resultType) || resultType==typeof(ValueTask) ||
+           resultType.IsGenericType && resultType.GetGenericTypeDefinition()==typeof(ValueTask<>))
+            throw new InvalidOperationException("Atomic callbacks must be synchronous.");
+        return store.Transaction(session =>
+        {
+            using var scoped = new TransactionStore(session, store.Info);
+            return action(new DocumentService(catalog, scoped, hooks, access));
+        });
+    }
+
+    // The provider owns commit/rollback; an escaped callback capability expires on return.
+    private sealed class TransactionStore(IStoreSession session, ProviderInfo info) : IDocumentStore
+    {
+        private bool active = true;
+        public ProviderInfo Info => info;
+        public T Transaction<T>(Func<IStoreSession,T> action)
+        {
+            if(!active)throw new ObjectDisposedException(nameof(TransactionStore));
+            return action(session);
+        }
+        public void Migrate(Catalog _) => throw new InvalidOperationException("Schema changes cannot join a document transaction.");
+        public void Dispose() => active = false;
+    }
+
     public bool CanReadField(Field field, Actor actor) => access?.CanRead(field, actor) ?? true;
     private Document Visible(DocType schema, Document document, Actor actor)
     {

@@ -270,3 +270,19 @@ events, durable workflow scheduling and arbitrary application jobs remain open i
   Identity/accounts/Data Protection keys are outside a document-tenant backup.
 - Initial implementation is database-per-tenant SQLite. PostgreSQL/SQL Server recovery,
   provider transfer, dynamic membership administration and cross-tenant reporting remain open.
+
+## Facility application acceptance (FAC-01)
+
+- A real two-laboratory browser application shall execute request → reservation → run → immutable
+  evidence → independent review → durable report release using Loom persistence and authorization.
+- Instrument and operator reservations shall reject overlapping active work atomically.
+- Calibration shall match the selected instrument and cover the reserved interval and acquisition.
+- Exact decimal results shall use explicit procedure units and inclusive acceptance limits.
+- Failed attempts shall require correction; new attempts retain all prior evidence and review dispositions.
+- Costs shall be hidden from operators; release reports containing costs require manager/reviewer access.
+- Cancellation shall retain history and release reservations. Amendments shall link to released originals.
+- Queued report work shall survive process restart and commit publication/completion atomically.
+- A clean-instance tenant restore shall reproduce document links, binary hashes and release evidence.
+- Desktop and mobile browser verification shall exercise actual accounts and API behavior.
+
+Implemented initial scope and remaining scale/integration goals are in FACILITY_OPERATIONS.md.
