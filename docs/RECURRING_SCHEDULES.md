@@ -65,3 +65,5 @@ A restart drill starts with the worker paused, saves a schedule, restarts the sa
 worker enabled and verifies one scheduled receipt and a future cursor. These tests run in BrowserTest
 on Windows, macOS and Linux. The failed-delivery UI fixture sets a terminal failure directly; existing
 outbox contracts separately verify actual automatic retry exhaustion.
+
+The opt-in [protected tenant operations host](PROTECTED_TENANT_OPERATIONS.md) now adds organization-scoped administration, encrypted payloads, new-audit redaction and failed-payload retention. Existing unprotected hosts retain their previous behavior.

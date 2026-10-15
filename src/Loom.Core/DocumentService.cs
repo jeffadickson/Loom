@@ -10,7 +10,7 @@ public interface IDocumentHook
     void BeforeSave(JsonObject values);
 }
 public sealed record Page(int Total, IReadOnlyList<Document> Items);
-public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnumerable<IDocumentHook> hooks, IDocumentAccessPolicy? access = null)
+public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnumerable<IDocumentHook> hooks, IDocumentAccessPolicy? access = null, AuditRedactionPolicy? auditRedaction = null)
 {
     /// <summary>Runs multiple authorized operations in one provider transaction. Do not retain the scoped service.</summary>
     public T Atomic<T>(Func<DocumentService,T> action)
@@ -23,7 +23,7 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
         return store.Transaction(session =>
         {
             using var scoped = new TransactionStore(session, store.Info);
-            return action(new DocumentService(catalog, scoped, hooks, access));
+            return action(new DocumentService(catalog, scoped, hooks, access, auditRedaction));
         });
     }
 
@@ -215,9 +215,9 @@ public sealed class DocumentService(Catalog catalog, IDocumentStore store, IEnum
             throw new LoomException(422,"Combined binary data exceeds the 8 MiB document limit.");
         return values;
     }
-    private static void Audit(IStoreSession s, Actor actor, string action, Document? before, Document? after)
+    private void Audit(IStoreSession s, Actor actor, string action, Document? before, Document? after)
     {
         var d = after ?? before!;
-        s.AppendAudit(new(Guid.NewGuid().ToString("N"), d.Type, d.Id, actor.Id, action, DateTimeOffset.UtcNow.ToString("O"), before, after));
+        s.AppendAudit(new(Guid.NewGuid().ToString("N"), d.Type, d.Id, actor.Id, action, DateTimeOffset.UtcNow.ToString("O"), auditRedaction?.Redact(catalog,before) ?? before, auditRedaction?.Redact(catalog,after) ?? after));
     }
 }

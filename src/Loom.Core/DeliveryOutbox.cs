@@ -17,11 +17,12 @@ public sealed record DeliveryOutcome(bool Acknowledged,Exception? Exception=null
 public sealed class DeliveryOutbox
 {
     private readonly TimeProvider clock;
+    private readonly IDeliveryPayloadProtection? protection;
     private readonly int maxAttempts;
     private readonly TimeSpan leaseDuration,initialBackoff,maximumBackoff;
-    public DeliveryOutbox(OutboxOptions? options=null,TimeProvider? clock=null)
+    public DeliveryOutbox(OutboxOptions? options=null,TimeProvider? clock=null,IDeliveryPayloadProtection? protection=null)
     {
-        options??=new();this.clock=clock??TimeProvider.System;maxAttempts=options.MaxAttempts;
+        this.protection=protection;options??=new();this.clock=clock??TimeProvider.System;maxAttempts=options.MaxAttempts;
         leaseDuration=options.LeaseDuration??TimeSpan.FromMinutes(2);
         initialBackoff=options.InitialBackoff??TimeSpan.FromSeconds(5);
         maximumBackoff=options.MaximumBackoff??TimeSpan.FromMinutes(15);
@@ -47,10 +48,39 @@ public sealed class DeliveryOutbox
         DateTimeOffset? due=null,string? key=null)
     {
         if(string.IsNullOrWhiteSpace(handler))throw new ArgumentException("A registered handler name is required.",nameof(handler));
-        var bytes=Encoding.UTF8.GetBytes(payload.ToJsonString());
-        if(bytes.Length>65536)throw new LoomException(422,"Outbox payload exceeds 64 KiB.");
-        return session.Create(type,new(){["Key"]=key??Guid.NewGuid().ToString("N"),["Handler"]=handler,
+        key??=Guid.NewGuid().ToString("N");
+        var bytes=EncodePayload(type,key,handler,payload);
+        return session.Create(type,new(){["Key"]=key,["Handler"]=handler,
             ["Payload"]=Convert.ToBase64String(bytes),["Status"]="Pending",["Attempts"]=0,["DueAt"]=(due??clock.GetUtcNow()).ToUnixTimeMilliseconds()});
+    }
+    internal byte[] EncodePayload(string type,string key,string handler,JsonObject payload)
+    {
+        var bytes=Encoding.UTF8.GetBytes(payload.ToJsonString());
+        if(bytes.Length>65536)throw new LoomException(422,"Payload exceeds 64 KiB.");
+        bytes=protection?.Protect(bytes,System.Text.Json.JsonSerializer.Serialize(new[]{type,key,handler}))??bytes;
+        if(bytes.Length>65536)throw new LoomException(422,"Protected payload exceeds storage limit.");
+        return bytes;
+    }
+    internal JsonObject DecodePayload(string type,string key,string handler,byte[] bytes)
+    {
+        bytes=protection?.Unprotect(bytes,System.Text.Json.JsonSerializer.Serialize(new[]{type,key,handler}))??bytes;
+        return JsonNode.Parse(Encoding.UTF8.GetString(bytes)) as JsonObject??throw new FormatException("Invalid payload.");
+    }
+    /// <summary>Expire old failed payloads in bounded batches. Keeps metadata/keys and makes retries impossible.</summary>
+    public int ExpireFailedPayloads(IApplicationSession session,string type,TimeSpan retention,int take=25)
+    {
+        if(retention<TimeSpan.FromHours(1)||retention>TimeSpan.FromDays(3650)||take is <1 or >100)throw new ArgumentOutOfRangeException(nameof(retention));
+        var schema=session.Describe(type);string Id(string name)=>schema.Fields.Single(f=>f.Name==name).Id!;
+        var cutoff=checked(Now-(long)retention.TotalMilliseconds);
+        var rows=session.Query(type,new(Id("DueAt"),Take:take,Filters:[new(Id("Status"),FilterOperator.Equal,JsonValue.Create("Failed")),new(Id("DueAt"),FilterOperator.LessThan,JsonValue.Create(cutoff))],SelectFieldIds:[]));
+        var count=0;
+        foreach(var candidate in rows.Items)count+=session.Atomic(s=>
+        {
+            var job=s.Get(type,candidate.Id);
+            if(job.Version!=candidate.Version||Value(job,"Status")!="Failed"||Number(job,"DueAt")>=cutoff||DateTimeOffset.Parse(job.ModifiedAt,CultureInfo.InvariantCulture).ToUnixTimeMilliseconds()>=cutoff)return 0;
+            Edit(s,job,v=>{v["Status"]="Cancelled";v["Payload"]=null;v["Error"]="Payload retention expired.";ClearLease(v);});return 1;
+        });
+        return count;
     }
     /// <summary>Bounded candidate scan excludes payloads. Expired leases are included for crash recovery.</summary>
     public IReadOnlyList<Document> Candidates(IApplicationSession session,string type,int take=25)
@@ -72,13 +102,13 @@ public sealed class DeliveryOutbox
         if(!(status=="Pending"&&Number(job,"DueAt")<=now || status=="Leased"&&Number(job,"LeaseUntil")<=now))return null;
         if(Number(job,"Attempts")>=maxAttempts)
         {
-            Edit(s,job,v=>{v["Status"]="Failed";v["Error"]="Delivery attempts exhausted.";ClearLease(v);});return null;
+            Edit(s,job,v=>{v["Status"]="Failed";v["DueAt"]=now;v["Error"]="Delivery attempts exhausted.";ClearLease(v);});return null;
         }
         // Decode before claiming. Invalid envelopes fail closed and remain visible to operators.
         JsonObject payload;
-        try{payload=JsonNode.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(Value(job,"Payload")))) as JsonObject??throw new FormatException();}
-        catch(Exception ex) when(ex is FormatException or System.Text.Json.JsonException)
-        {Edit(s,job,v=>{v["Status"]="Failed";v["Error"]="Invalid delivery payload.";ClearLease(v);});return null;}
+        try{payload=DecodePayload(job.Type,Value(job,"Key"),Value(job,"Handler"),Convert.FromBase64String(Value(job,"Payload")));}
+        catch(Exception ex) when(ex is FormatException or System.Text.Json.JsonException or System.Security.Cryptography.CryptographicException)
+        {Edit(s,job,v=>{v["Status"]="Failed";v["DueAt"]=now;v["Error"]="Invalid delivery payload.";ClearLease(v);});return null;}
         var token=Guid.NewGuid().ToString("N");var attempt=checked((int)Number(job,"Attempts")+1);
         Edit(s,job,v=>{v["Status"]="Leased";v["Attempts"]=attempt;v["LeaseToken"]=token;v["LeaseUntil"]=checked(now+(long)leaseDuration.TotalMilliseconds);});
         return new OutboxLease(job.Type,job.Id,token,new(job.Id,Value(job,"Key"),Value(job,"Handler"),payload,attempt));
@@ -102,7 +132,7 @@ public sealed class DeliveryOutbox
         var job=s.Get(lease.Type,lease.Id);if(!Owns(job,lease))return false;
         var attempts=Number(job,"Attempts");
         var delay=Math.Min(maximumBackoff.TotalMilliseconds,initialBackoff.TotalMilliseconds*Math.Pow(2,Math.Min(attempts-1,30)));
-        Edit(s,job,v=>{v["Status"]=attempts>=maxAttempts?"Failed":"Pending";v["DueAt"]=checked(Now+(long)delay);v["Error"]=publicError;ClearLease(v);});return true;
+        Edit(s,job,v=>{v["Status"]=attempts>=maxAttempts?"Failed":"Pending";v["DueAt"]=attempts>=maxAttempts?Now:checked(Now+(long)delay);v["Error"]=publicError;ClearLease(v);});return true;
     });
     /// <summary>Host-authorized manual retry preserves the idempotency key and resets the attempt budget.</summary>
     public Document Retry(IApplicationSession session,string type,string id,int version)=>session.Atomic(s=>

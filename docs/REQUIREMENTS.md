@@ -358,3 +358,18 @@ Implemented initial scope and remaining scale/integration goals are in FACILITY_
   isolate tenant scan failures, serialize rounds, and recover interrupted leases after restart.
 - **HOST-05:** Provide an executable two-tenant example and real SQLite isolation/revocation/recovery
   tests. Document DI scope ownership and production deployment limits.
+
+## Protected tenant operations
+
+- **TENANT-OPS-01:** List only authorized organizations, recheck tenant Admin membership for every
+  operation, and deny global-role/header bypass and cross-tenant record actions.
+- **TENANT-OPS-02:** Clear stale rows/dialogs on organization switch and logout; retain existing request
+  protection, paging, expected-version actions and omission of payload/lease secrets.
+- **PAYLOAD-01:** Support opt-in authenticated payload protection bound to tenant and queue identity,
+  including recurring definitions, persisted key IDs and key rotation. Reject plaintext fallback.
+- **PAYLOAD-02:** Redact configured stable field IDs from new audit snapshots without changing live data;
+  propagate the policy through atomic sessions and tenant routing.
+- **PAYLOAD-03:** Expire old failed payloads in bounded version-checked batches, preserve metadata/keys,
+  prevent retry after expiration, and leave pending/in-flight/scheduled work unaffected.
+- **PAYLOAD-04:** Document key storage/recovery, old audit and backup retention, logical-deletion limits,
+  and explicit migration of existing plaintext queues. Verify restart and tenant isolation in CI.

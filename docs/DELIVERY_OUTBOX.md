@@ -128,3 +128,5 @@ The example host is not a production multi-tenant scheduler deployment.
 
 For explicit handler registration and a host spanning multiple authorized tenant databases, see
 [Tenant delivery hosting](TENANT_DELIVERY_HOSTING.md). Run `--tenant-jobs-demo` for the offline example.
+
+The opt-in [protected tenant operations host](PROTECTED_TENANT_OPERATIONS.md) now adds organization-scoped administration, encrypted payloads, new-audit redaction and failed-payload retention. Existing unprotected hosts retain their previous behavior.

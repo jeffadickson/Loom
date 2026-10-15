@@ -16,15 +16,16 @@ public sealed class TenantWorkspace
     private readonly Func<string,string,string?> membership;
     private readonly IDocumentHook[] hooks;
     private readonly IDocumentAccessPolicy? access;
+    private readonly AuditRedactionPolicy? auditRedaction;
 
     public TenantWorkspace(string directory, IEnumerable<string> tenantIds,
         Func<string,string,string?> membership, IEnumerable<IDocumentHook>? hooks = null,
-        IDocumentAccessPolicy? access = null)
+        IDocumentAccessPolicy? access = null, AuditRedactionPolicy? auditRedaction = null)
     {
         root=Path.GetFullPath(directory);
         tenants=new(tenantIds,StringComparer.Ordinal);
         foreach(var id in tenants)ValidateId(id);
-        this.membership=membership;this.hooks=hooks?.ToArray()??[];this.access=access;
+        this.membership=membership;this.hooks=hooks?.ToArray()??[];this.access=access;this.auditRedaction=auditRedaction;
         Directory.CreateDirectory(root);
         if(!OperatingSystem.IsWindows())File.SetUnixFileMode(root,UnixFileMode.UserRead|UnixFileMode.UserWrite|UnixFileMode.UserExecute);
     }
@@ -78,7 +79,7 @@ public sealed class TenantWorkspace
         {
             store.BindTenant(tenant);
             var catalog=store.ReadCatalog()??throw new LoomException(409,"Missing tenant schema.");
-            return new(store,catalog,()=>new Actor(authenticatedUserId,Role(authenticatedUserId,tenant)),hooks,access);
+            return new(store,catalog,()=>new Actor(authenticatedUserId,Role(authenticatedUserId,tenant)),hooks,access,auditRedaction);
         }
         catch {store.Dispose();throw;}
     }
@@ -127,8 +128,8 @@ public sealed class TenantSession : IDisposable, IApplicationSession
     private readonly Catalog catalog;
     private readonly Func<Actor> actor;
     private readonly DocumentService service;
-    internal TenantSession(SqliteStore store,Catalog catalog,Func<Actor> actor,IDocumentHook[] hooks,IDocumentAccessPolicy? access)
-    {this.store=store;this.catalog=catalog;this.actor=actor;service=new(catalog,store,hooks,access);}
+    internal TenantSession(SqliteStore store,Catalog catalog,Func<Actor> actor,IDocumentHook[] hooks,IDocumentAccessPolicy? access,AuditRedactionPolicy? auditRedaction)
+    {this.store=store;this.catalog=catalog;this.actor=actor;service=new(catalog,store,hooks,access,auditRedaction);}
     private bool ownsStore = true;
     private TenantSession(SqliteStore store,Catalog catalog,Func<Actor> actor,DocumentService service)
     { this.store=store;this.catalog=catalog;this.actor=actor;this.service=service;ownsStore=false; }

@@ -99,3 +99,5 @@ and invalid registrations. Existing provider tests cover the underlying outbox c
 on PostgreSQL/SQL Server. The concrete tenant-routing adapter here is SQLite only. A production
 multi-tenant operations UI, sensitive-payload retention/encryption and distributed load qualification
 remain separate tasks in #24.
+
+The opt-in [protected tenant operations host](PROTECTED_TENANT_OPERATIONS.md) now adds organization-scoped administration, encrypted payloads, new-audit redaction and failed-payload retention. Existing unprotected hosts retain their previous behavior.

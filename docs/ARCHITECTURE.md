@@ -298,3 +298,13 @@ serializes overlapping rounds. TenantWorkspace.DeliveryRoute supplies the SQLite
 fresh TenantSession with live membership for every scope. No worker role or tenant comes from payloads.
 Custom provider routes remain host responsibilities. See [tenant delivery hosting](TENANT_DELIVERY_HOSTING.md)
 for dependency-injection scope ownership, runnable example, revocation semantics and capacity limits.
+
+## Protected tenant operations
+
+The opt-in tenant operations host uses independent TenantWorkspace databases and live configured
+membership, with no global-role bypass. DeliveryOutbox delegates payload protection to an optional
+IDeliveryPayloadProtection; the AES-GCM implementation binds scope/type/key/handler and records its
+key ID. RecurringSchedules shares the policy. AuditRedactionPolicy removes stable-ID-selected fields
+from new stored snapshots and survives Atomic nesting. Bounded failed-payload expiry keeps keys and
+metadata but disables retry. See [protected operations](PROTECTED_TENANT_OPERATIONS.md) for setup,
+key rotation, historical-data limits and the runnable --tenant-operations-demo.

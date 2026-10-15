@@ -20,8 +20,7 @@ public sealed class RecurringSchedules(DeliveryOutbox outbox,TimeProvider? clock
     {
         if(intervalSeconds is <1 or >31536000||missedRuns is not ("Skip" or "CatchUp")||string.IsNullOrWhiteSpace(handler))
             throw new LoomException(422,"Specify a valid interval, handler and missed-run policy.");
-        var bytes=Encoding.UTF8.GetBytes(payload.ToJsonString());
-        if(bytes.Length>65536)throw new LoomException(422,"Schedule payload exceeds 64 KiB.");
+        var bytes=outbox.EncodePayload(type,name,handler,payload);
         return session.Create(type,new(){["Name"]=name,["Handler"]=handler,["Payload"]=Convert.ToBase64String(bytes),
             ["IntervalSeconds"]=intervalSeconds,["NextDueAt"]=firstDue.ToUnixTimeMilliseconds(),["Enabled"]=true,["MissedRuns"]=missedRuns});
     }
@@ -54,7 +53,7 @@ public sealed class RecurringSchedules(DeliveryOutbox outbox,TimeProvider? clock
                 if(interval<=0)throw new LoomException(422,"Invalid recurring interval.");
                 var skip=schedule.Values["MissedRuns"]!.ToString()=="Skip";
                 if(skip)due=checked(due+(now-due)/interval*interval);
-                var payload=JsonNode.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(schedule.Values["Payload"]!.ToString())))!.AsObject();
+                var payload=outbox.DecodePayload(scheduleType,schedule.Values["Name"]!.ToString(),schedule.Values["Handler"]!.ToString(),Convert.FromBase64String(schedule.Values["Payload"]!.ToString()));
                 var emitted=0;
                 while(due<=now&&emitted<remaining)
                 {
