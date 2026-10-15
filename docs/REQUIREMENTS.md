@@ -307,5 +307,17 @@ Implemented initial scope and remaining scale/integration goals are in FACILITY_
 - **JOB-01:** A provider-independent database-only runner executes persisted pending jobs, atomically
   completes effects, records bounded failed attempts, suppresses stale candidates and allows
   authorized failed-job retry. Process restart preserves pending work; cancellation consumes no attempt.
-- **JOB-02:** Explicitly distinguish transactional database work from external side effects. External
-  delivery, scheduling/backoff and worker leases remain tracked by #24; no exactly-once external guarantee.
+- **JOB-02:** Explicitly distinguish transactional database work from external side effects. The leased
+  external-delivery implementation is specified by OUTBOX-01–04 below; recurring scheduling and
+  operational administration remain in #24. No exactly-once external guarantee.
+
+## Scheduled external outbox
+
+- **OUTBOX-01:** Enqueue external delivery in the business transaction; persist an explicit handler,
+  bounded JSON payload, unique idempotency key and optional UTC due time.
+- **OUTBOX-02:** Claim due/expired work with version checks and expiring token leases; count claims,
+  fence stale workers, support renewal and recover after process interruption.
+- **OUTBOX-03:** Deliver asynchronously outside database transactions through registered handlers;
+  persist capped exponential backoff, exhaustion, authorized retry/cancellation and safe public errors.
+- **OUTBOX-04:** HTTP delivery preserves idempotency keys; document at-least-once semantics and receiver
+  deduplication. Test lost acknowledgements, restart, permissions, cancellation and provider compatibility.

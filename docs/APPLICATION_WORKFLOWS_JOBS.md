@@ -71,8 +71,8 @@ Bounded attempts count recorded outcomes, not process crashes.
 **Handlers must perform only synchronous work whose effects share this database transaction.**
 Do not send email, invoke instruments, write external files or make HTTP calls inside Run. External
 operations need a leased outbox with at-least-once delivery and idempotency keys. Identity's existing
-email outbox remains separate. Scheduling, backoff, external delivery, worker leases and generalized
-cancellation administration remain open in issue #24. Long computation inside a transaction holds
+email outbox remains separate. DeliveryOutbox now provides due scheduling, capped backoff, HTTP delivery and worker leases; see
+DELIVERY_OUTBOX.md. Recurring schedules and generalized cancellation administration remain open in #24. Long computation inside a transaction holds
 locks; this runner is intended for small database-derived publications, not instrument acquisition.
 
 ## Application and verification

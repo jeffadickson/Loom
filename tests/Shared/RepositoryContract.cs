@@ -18,6 +18,87 @@ public abstract class RepositoryContract
     {
         var model=Model();store.Migrate(model);return new(model,store,[]);
     }
+    private sealed class OutboxClock:TimeProvider
+    {
+        public DateTimeOffset Now=new(2026,1,1,0,0,0,TimeSpan.Zero);
+        public override DateTimeOffset GetUtcNow()=>Now;
+    }
+    private static Catalog OutboxModel()=>new([DeliveryOutbox.Definition("Delivery",new(){["Admin"]=["read","create","write","audit"]})]);
+    [Fact] public void OutboxScheduleBackoffExhaustionAndAdministrativeActions()
+    {
+        using var store=Open();var model=OutboxModel();store.Migrate(model);
+        var session=new ApplicationSession(new DocumentService(model,store,[]),Admin);var clock=new OutboxClock();
+        var outbox=new DeliveryOutbox(new(MaxAttempts:3,InitialBackoff:TimeSpan.FromSeconds(5),MaximumBackoff:TimeSpan.FromSeconds(8)),clock);
+        var queued=outbox.Enqueue(session,"Delivery","test",new(){["value"]=42},clock.Now.AddMinutes(1));
+        Assert.Empty(outbox.Candidates(session,"Delivery"));clock.Now=clock.Now.AddMinutes(1);
+        var candidate=Assert.Single(outbox.Candidates(session,"Delivery"));Assert.Empty(candidate.Values);
+        var lease=Assert.IsType<OutboxLease>(outbox.Claim(session,candidate));Assert.Null(outbox.Claim(session,candidate));
+        Assert.True(outbox.Fail(session,lease));Assert.Empty(outbox.Candidates(session,"Delivery"));
+        clock.Now=clock.Now.AddSeconds(5);lease=outbox.Claim(session,Assert.Single(outbox.Candidates(session,"Delivery")))!;
+        Assert.Equal(2,lease.Message.Attempt);Assert.True(outbox.Fail(session,lease));
+        clock.Now=clock.Now.AddSeconds(7);Assert.Empty(outbox.Candidates(session,"Delivery"));
+        clock.Now=clock.Now.AddSeconds(1);lease=outbox.Claim(session,Assert.Single(outbox.Candidates(session,"Delivery")))!;
+        Assert.True(outbox.Fail(session,lease));Assert.Empty(outbox.Candidates(session,"Delivery"));
+        var failed=session.Get("Delivery",queued.Id);Assert.Equal("Failed",failed.Values["Status"]!.ToString());
+        Assert.Equal(409,Assert.Throws<LoomException>(()=>outbox.Retry(session,"Delivery",queued.Id,queued.Version)).Status);
+        var retried=outbox.Retry(session,"Delivery",queued.Id,failed.Version);
+        Assert.Equal(queued.Values["Key"]!.ToString(),retried.Values["Key"]!.ToString());
+        var cancelled=outbox.Cancel(session,"Delivery",queued.Id,retried.Version);
+        Assert.Equal("Cancelled",cancelled.Values["Status"]!.ToString());Assert.Null(cancelled.Values["Payload"]);
+        Assert.Empty(outbox.Candidates(session,"Delivery"));
+    }
+    [Fact] public void ExpiredOutboxWorkersAreFencedAndCrashClaimsAreBounded()
+    {
+        using var store=Open();var model=OutboxModel();store.Migrate(model);
+        var session=new ApplicationSession(new DocumentService(model,store,[]),Admin);var clock=new OutboxClock();
+        var outbox=new DeliveryOutbox(new(MaxAttempts:2,LeaseDuration:TimeSpan.FromSeconds(10)),clock);
+        var queued=outbox.Enqueue(session,"Delivery","test",new());var first=outbox.Claim(session,queued)!;
+        Assert.Equal(409,Assert.Throws<LoomException>(()=>outbox.Cancel(session,"Delivery",queued.Id,session.Get("Delivery",queued.Id).Version)).Status);
+        clock.Now=clock.Now.AddSeconds(5);Assert.True(outbox.Renew(session,first));
+        clock.Now=clock.Now.AddSeconds(5);Assert.Empty(outbox.Candidates(session,"Delivery"));
+        clock.Now=clock.Now.AddSeconds(5);Assert.False(outbox.Complete(session,first));Assert.False(outbox.Renew(session,first));
+        var second=outbox.Claim(session,Assert.Single(outbox.Candidates(session,"Delivery")))!;
+        Assert.Equal(first.Message.Key,second.Message.Key);Assert.NotEqual(first.Token,second.Token);
+        Assert.False(outbox.Fail(session,first));Assert.False(outbox.Complete(session,first));
+        clock.Now=clock.Now.AddSeconds(10);Assert.Null(outbox.Claim(session,Assert.Single(outbox.Candidates(session,"Delivery"))));
+        Assert.Equal("Failed",session.Get("Delivery",queued.Id).Values["Status"]!.ToString());
+        Assert.Empty(outbox.Candidates(session,"Delivery"));
+    }
+    [Fact] public async Task OutboxLostAcknowledgementRetriesWithSameKeyAndOneReceiverEffect()
+    {
+        using var store=Open();var model=OutboxModel();store.Migrate(model);
+        var session=new ApplicationSession(new DocumentService(model,store,[]),Admin);var clock=new OutboxClock();
+        var outbox=new DeliveryOutbox(clock:clock);var accepted=new HashSet<string>();var calls=0;
+        var handlers=new Dictionary<string,Func<OutboxMessage,CancellationToken,Task>>{["test"]=async (message,token)=>
+        {
+            await Task.Yield();token.ThrowIfCancellationRequested();accepted.Add(message.Key);calls++;
+            if(calls==1)throw new IOException("private connection details");
+        }};
+        var job=outbox.Enqueue(session,"Delivery","test",new(){["text"]="payload"});var lease=outbox.Claim(session,job)!;
+        var first=await outbox.DeliverAsync(session,lease,handlers);Assert.NotNull(first.Exception);Assert.False(first.Acknowledged);
+        Assert.DoesNotContain("private",session.Get("Delivery",job.Id).Values["Error"]!.ToString());
+        clock.Now=clock.Now.AddSeconds(5);lease=outbox.Claim(session,Assert.Single(outbox.Candidates(session,"Delivery")))!;
+        Assert.True((await outbox.DeliverAsync(session,lease,handlers)).Acknowledged);
+        Assert.False((await outbox.DeliverAsync(session,lease,handlers)).Acknowledged);
+        Assert.Single(accepted);Assert.Equal(2,calls);Assert.Null(session.Get("Delivery",job.Id).Values["Payload"]);
+    }
+    [Fact] public void OutboxEnqueueRollsBackWithBusinessWriteAndKeysAreUnique()
+    {
+        using var store=Open();var model=OutboxModel();store.Migrate(model);
+        var service=new DocumentService(model,store,[]);var session=new ApplicationSession(service,Admin);var outbox=new DeliveryOutbox();
+        var original=outbox.Enqueue(session,"Delivery","test",new(),key:"original");
+        Assert.Throws<InvalidOperationException>(()=>session.Atomic<int>(s=>
+        {
+            var values=(JsonObject)original.Values.DeepClone();values["Handler"]="changed";s.Update("Delivery",original.Id,original.Version,values);
+            outbox.Enqueue(s,"Delivery","test",new(),key:"new");throw new InvalidOperationException();
+        }));
+        Assert.Equal(original.Version,session.Get("Delivery",original.Id).Version);Assert.Single(service.History("Delivery",original.Id,Admin));
+        Assert.Equal(1,service.List("Delivery",Admin).Total);
+        Assert.Equal(409,Assert.Throws<LoomException>(()=>outbox.Enqueue(session,"Delivery","test",new(),key:"original")).Status);
+        var denied=new ApplicationSession(service,new("viewer","Viewer"));
+        Assert.Equal(403,Assert.Throws<LoomException>(()=>outbox.Claim(denied,original)).Status);
+    }
+
     private static Catalog WorkModel()=>new([new("Work","Work",1,"Name",false,
         [new("Name","Name","Text",true),new("Status","Status","Text",true),new("Attempts","Attempts","Integer",true),new("Error","Error","Text")],
         new(){["Admin"]=["read","create","write","audit"]})]);

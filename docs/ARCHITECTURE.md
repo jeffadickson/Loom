@@ -262,3 +262,13 @@ persisted database-only worker pattern, including version fencing, retry limits 
 The application owns the job schema, host polling and domain rules. Identity's external email outbox
 remains separate. See [application workflows and jobs](APPLICATION_WORKFLOWS_JOBS.md) for examples,
 transaction boundaries and remaining scheduler/outbox requirements.
+
+## External delivery outbox
+
+DeliveryOutbox complements TransactionalJobs: its claim/acknowledgement transactions are short, and
+asynchronous external I/O happens between them. Application-owned metadata defines queue storage for
+all document providers. Version checks and random lease tokens fence stale workers; UTC millisecond
+deadlines support bounded candidate queries, scheduling, capped backoff and abandoned-claim recovery.
+HttpOutboxTransport posts to one host-configured endpoint with a stable Idempotency-Key. Receiver
+cooperation is required for duplicate suppression. See [delivery outbox](DELIVERY_OUTBOX.md) for the
+API, authorization, audit-payload retention, host integration and remaining scheduler scope.
