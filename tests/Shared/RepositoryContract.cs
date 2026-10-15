@@ -23,6 +23,41 @@ public abstract class RepositoryContract
         public DateTimeOffset Now=new(2026,1,1,0,0,0,TimeSpan.Zero);
         public override DateTimeOffset GetUtcNow()=>Now;
     }
+    private static Catalog ScheduleModel()=>new([
+        DeliveryOutbox.Definition("Delivery",new(){["Admin"]=["read","create","write","audit"]}),
+        RecurringSchedules.Definition("Schedule",new(){["Admin"]=["read","create","write","audit"]})]);
+    [Fact] public void RecurringCatchUpIsBoundedPausedAndDoesNotDuplicateOccurrences()
+    {
+        using var store=Open();var model=ScheduleModel();store.Migrate(model);var session=new ApplicationSession(new DocumentService(model,store,[]),Admin);
+        var clock=new OutboxClock();var outbox=new DeliveryOutbox(clock:clock);var schedules=new RecurringSchedules(outbox,clock);
+        var schedule=schedules.Create(session,"Schedule","catch up","test",new(){["value"]=42},10,clock.Now.AddSeconds(-40),"CatchUp");
+        Assert.Equal(2,schedules.Tick(session,"Schedule","Delivery",2));
+        Assert.Equal(2,schedules.Tick(session,"Schedule","Delivery",2));
+        var current=session.Get("Schedule",schedule.Id);
+        var paused=schedules.SetEnabled(session,"Schedule",schedule.Id,current.Version,false);
+        Assert.Equal(0,schedules.Tick(session,"Schedule","Delivery",2));
+        Assert.Equal(409,Assert.Throws<LoomException>(()=>schedules.SetEnabled(session,"Schedule",schedule.Id,current.Version,true)).Status);
+        schedules.SetEnabled(session,"Schedule",schedule.Id,paused.Version,true);
+        Assert.Equal(1,schedules.Tick(session,"Schedule","Delivery",2));Assert.Equal(0,schedules.Tick(session,"Schedule","Delivery",2));
+        var key=model.Get("Delivery").Fields.Single(f=>f.Name=="Key").Id!;
+        var page=session.Query("Delivery",new(key));Assert.Equal(5,page.Total);
+        Assert.Equal(5,page.Items.Select(d=>d.Values["Key"]!.ToString()).Distinct().Count());
+        Assert.All(page.Items,d=>Assert.Equal("Pending",d.Values["Status"]!.ToString()));
+    }
+    [Fact] public void RecurringSkipEmitsLatestAndEnqueueConflictRollsBackCursor()
+    {
+        using var store=Open();var model=ScheduleModel();store.Migrate(model);var session=new ApplicationSession(new DocumentService(model,store,[]),Admin);
+        var clock=new OutboxClock();var outbox=new DeliveryOutbox(clock:clock);var schedules=new RecurringSchedules(outbox,clock);
+        var schedule=schedules.Create(session,"Schedule","skip","test",new(),10,clock.Now.AddSeconds(-45));
+        Assert.Equal(1,schedules.Tick(session,"Schedule","Delivery"));
+        var cursor=session.Get("Schedule",schedule.Id);
+        Assert.Equal(clock.Now.AddSeconds(5).ToUnixTimeMilliseconds().ToString(),cursor.Values["NextDueAt"]!.ToString());
+        clock.Now=clock.Now.AddSeconds(5);
+        outbox.Enqueue(session,"Delivery","test",new(),key:$"schedule:{schedule.Id}:{clock.Now.ToUnixTimeMilliseconds()}");
+        Assert.Equal(409,Assert.Throws<LoomException>(()=>schedules.Tick(session,"Schedule","Delivery")).Status);
+        Assert.Equal(cursor.Version,session.Get("Schedule",schedule.Id).Version);
+    }
+
     private static Catalog OutboxModel()=>new([DeliveryOutbox.Definition("Delivery",new(){["Admin"]=["read","create","write","audit"]})]);
     [Fact] public void OutboxScheduleBackoffExhaustionAndAdministrativeActions()
     {

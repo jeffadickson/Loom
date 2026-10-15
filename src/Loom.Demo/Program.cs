@@ -33,6 +33,8 @@ if (args.Contains("--hash-password"))
     if (password.Length < 12) throw new InvalidOperationException("Use at least 12 characters.");
     Console.WriteLine(new PasswordHasher<LoomAccount>().HashPassword(new("", "Viewer", ""), password)); return;
 }
+var jobsDemo=args.Contains("--jobs-demo");
+if(jobsDemo)JobAdministration.ConfigureDemo(builder);
 var facilityDemo=args.Contains("--facility-demo");
 if(facilityDemo)FacilityEndpoints.ConfigureDemo(builder);
 var identityEnabled = builder.Configuration["Authentication:Mode"] == "Identity";
@@ -53,7 +55,8 @@ if(administratorArgument!=null)
     await identityHost.CreateAdministratorAsync(administratorArgument["--identity-admin=".Length..],password);
     Console.WriteLine("Administrator created.");return;
 }
-var memoryDemo=args.Contains("--memory-demo")||facilityDemo;
+var jobs=JobAdministration.Configure(builder,jobsDemo,accountsEnabled);
+var memoryDemo=args.Contains("--memory-demo")||facilityDemo||jobsDemo;
 var scienceDemo=memoryDemo||args.Contains("--science-demo");
 if(memoryDemo)builder.Configuration["Database:Provider"]="Memory";
 var modelSource = builder.Configuration["Models:Source"] ?? "Json";
@@ -195,6 +198,7 @@ else
 if(identityEnabled) app.Use(async(c,next)=> { if(c.Request.Path=="/login.html"){c.Response.Redirect("/Identity/Account/Login");return;}await next(); });
 TenantEndpoints.Map(app,tenantWorkspace);
 FacilityEndpoints.Map(app,facility,facilityDemo);
+jobs?.Map(app);
 app.UseDefaultFiles(); app.UseStaticFiles();
 app.MapGet("/api/meta", (HttpContext c) =>
 {

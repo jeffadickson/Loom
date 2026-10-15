@@ -85,6 +85,7 @@ claim fencing, renewal, crash exhaustion, terminal states, atomic enqueue rollba
 permissions and duplicate delivery. HTTP tests inspect the real request headers/body through a fake
 HttpMessageHandler and verify non-success responses. Unit coverage includes host cancellation and four independent SQLite connections competing for one claim.
 
-Remaining scope in #24: recurring schedules/cron, operational administration UI, retention/encryption,
-large-queue/concurrent-worker stress qualification, and integrating additional real consumers. This
-increment supplies reusable primitives and HTTP delivery, not a hosted multi-tenant scheduler service.
+Recurring fixed UTC schedules and an authenticated local operations UI/host are now implemented;
+see RECURRING_SCHEDULES.md. Remaining scope in #24: cron/calendar schedules, retention/encryption,
+large-queue/distributed-worker stress qualification, and integration of additional real consumers.
+The example host is not a production multi-tenant scheduler deployment.

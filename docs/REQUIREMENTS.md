@@ -321,3 +321,16 @@ Implemented initial scope and remaining scale/integration goals are in FACILITY_
   persist capped exponential backoff, exhaustion, authorized retry/cancellation and safe public errors.
 - **OUTBOX-04:** HTTP delivery preserves idempotency keys; document at-least-once semantics and receiver
   deduplication. Test lost acknowledgements, restart, permissions, cancellation and provider compatibility.
+
+## Recurring work and operations administration
+
+- **SCHED-01:** Fixed UTC interval schedules atomically materialize outbox occurrences and advance
+  their cursor. Stable occurrence keys and expected versions prevent duplicate committed occurrences.
+- **SCHED-02:** Support bounded CatchUp and cadence-preserving Skip policies, versioned pause/resume,
+  and persistence across process restarts. Pause does not recall already queued deliveries.
+- **OPS-01:** Authenticated administrator UI/API provides bounded delivery lists, status filtering,
+  failure inspection, retry/cancel, schedule creation/pause/resume and last-refreshed timestamps.
+- **OPS-02:** Derive authority from signed-in claims; reject role-header spoofing and requests missing
+  existing same-origin/header protection. Omit payloads/lease tokens from lists and audit mutations.
+- **OPS-03:** Demonstration handlers remain local and allowlisted. Recurring cron/calendar schedules,
+  arbitrary production handler registration and distributed scale qualification are separate scope.

@@ -272,3 +272,12 @@ deadlines support bounded candidate queries, scheduling, capped backoff and aban
 HttpOutboxTransport posts to one host-configured endpoint with a stable Idempotency-Key. Receiver
 cooperation is required for duplicate suppression. See [delivery outbox](DELIVERY_OUTBOX.md) for the
 API, authorization, audit-payload retention, host integration and remaining scheduler scope.
+
+## Recurring scheduler and operations host
+
+RecurringSchedules atomically materializes aligned UTC occurrences into DeliveryOutbox and advances
+its application-owned cursor. Fixed intervals have explicit bounded CatchUp or latest-occurrence Skip
+behavior. The demo's JobAdministration uses isolated SQLite storage, signed-in administrator claims,
+versioned actions and one connection per tick/request. Its hosted worker polls persisted work; its
+browser UI shares the existing operations visual style and hides payload/lease secrets from lists.
+Only local receipt/failure handlers are enabled. See RECURRING_SCHEDULES.md for semantics and limits.
