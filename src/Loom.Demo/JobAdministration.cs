@@ -168,19 +168,15 @@ internal sealed class JobAdministration
         {
             if(!demo)throw new InvalidOperationException("Provision Jobs:KeyRingFile before starting protected tenant jobs.");
             Directory.CreateDirectory(Path.GetDirectoryName(keyPath)!);
-            var options=new FileStreamOptions{Mode=FileMode.CreateNew,Access=FileAccess.Write};
-            if(!OperatingSystem.IsWindows())options.UnixCreateMode=UnixFileMode.UserRead|UnixFileMode.UserWrite;
-            using var file=new FileStream(keyPath,options);
-            System.Text.Json.JsonSerializer.Serialize(file,new KeyRing("initial",new(){["initial"]=Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32))}));
+            DeliveryPayloadKeyRingFile.Create(keyPath);
         }
-        var ring=System.Text.Json.JsonSerializer.Deserialize<KeyRing>(File.ReadAllText(keyPath))??throw new InvalidOperationException("Invalid key ring.");
-        var keys=ring.Keys.ToDictionary(k=>k.Key,k=>Convert.FromBase64String(k.Value),StringComparer.Ordinal);
+        DeliveryPayloadKeyRingFile.Inspect(keyPath);
         var redaction=new AuditRedactionPolicy(Model.Types.Values.SelectMany(t=>t.Fields).Where(f=>f.Name is "Payload" or "LeaseToken").Select(f=>f.Id!));
         var workspace=new TenantWorkspace(root,ids,Membership,auditRedaction:redaction);
         var hosts=ids.Select(id=>
         {
             workspace.Provision(id,Model);
-            return new JobAdministration(workspace,id,new AesDeliveryPayloadProtection("loom-jobs:"+id,ring.CurrentKey,keys),retention);
+            return new JobAdministration(workspace,id,DeliveryPayloadKeyRingFile.Open(keyPath,"loom-jobs:"+id),retention);
         }).ToArray();
         if(!settings.GetValue<bool>("PauseWorker"))builder.Services.AddHostedService(_=>new TenantWorker(hosts));
         return app=>
@@ -195,7 +191,6 @@ internal sealed class JobAdministration
             foreach(var host in hosts)host.Map(app,"/api/jobs/tenants/"+host.tenant);
         };
     }
-    private sealed record KeyRing(string CurrentKey,Dictionary<string,string> Keys);
     private sealed class TenantWorker(JobAdministration[] hosts):BackgroundService
     {
         protected override async Task ExecuteAsync(CancellationToken stop)

@@ -108,3 +108,51 @@ mobile layout, cross-tenant API denial and denial of a global Admin without memb
 reuses persisted keys and databases and verifies delivery stays in its original tenant. Both single-workspace
 and tenant operations browser tests run in cross-platform CI. Production key management, retrospective
 audit cleanup and large-scale qualification remain open in issue #24.
+
+## Offline key-management commands
+
+Run these before starting the web host. Provision a private parent directory first; commands do not
+create directories or overwrite existing destination files.
+
+```
+dotnet run --project src/Loom.Demo -- --jobs-key-create /private/loom/keys-v1.json
+dotnet run --project src/Loom.Demo -- --jobs-key-check /private/loom/keys-v1.json
+dotnet run --project src/Loom.Demo -- --jobs-key-rotate /private/loom/keys-v1.json /private/loom/keys-v2.json
+```
+
+Use equivalent absolute paths on Windows. Commands print only the active key identifier and retained-key
+count, never the key bytes. Errors return a nonzero exit status. The core `DeliveryPayloadKeyRingFile`
+API provides the same create/inspect/open/rotate operations for deployment tooling. File parsing is strict:
+64 KiB maximum, 256 keys maximum, unique properties/IDs, an existing active ID, and 32-byte decoded keys.
+The existing `CurrentKey`/`Keys` JSON format is retained. Symbolic-link key files are rejected; parent
+paths must still be trusted and protected from replacement by other users.
+
+Creation and rotation write a random-named temporary file in the destination directory, flush it, then
+rename without overwrite. An exclusively created destination `.lock` file serializes cooperating
+publishers because no-overwrite rename alone can race on some filesystems. Readers see a complete file.
+If a process crashes, a lock or temporary file may remain; the command fails closed. Stop all key
+operations, inspect the destination with --jobs-key-check, and remove stale files only after confirming
+there is no active publisher. Never use other tools to write the destination concurrently.
+Unix files are created with mode 0600; Windows inherits the parent ACL, which the operator must restrict.
+This protects against partial writes during ordinary interruption; it is not a claim of guaranteed
+filesystem durability through every power-loss scenario. Backups remain necessary.
+
+Use this rotation sequence:
+
+1. Pause/stop all producers and workers sharing the ring. A running process holds a startup snapshot.
+2. Rotate to a **new** destination file. Every old key is retained and a fresh active key is added.
+3. Validate and securely back up the new ring, separately from the database backup.
+4. Set `Jobs:KeyRingFile` to the new file and restart all participating processes together.
+5. Verify pending deliveries and recurring definitions still decode before resuming normal operation.
+
+Do not switch only producers: older workers cannot read messages encrypted with the new key. Once
+new-key messages exist, reverting to the old ring alone is not a safe rollback. Keep the new ring even
+if application code is rolled back. The commands deliberately do not remove keys or rewrite ciphertext;
+key retirement requires an inventory of queued deliveries, recurring definitions and retained backups.
+
+The CI restart drill now rotates while the host is stopped, copies the rotated ring to a separate
+recovery file, validates it, checks command output for secret leakage, and restarts against that copy.
+A delivery encrypted under the original key must complete. Core tests additionally verify newly encrypted
+messages survive recovery and cannot be opened by an old-only ring, plus duplicate/malformed rejection,
+non-overwrite, concurrent publication and Unix file permissions. This qualifies the local file workflow;
+cloud KMS integration and production disaster-recovery exercises remain separate work.

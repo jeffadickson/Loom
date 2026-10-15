@@ -14,6 +14,26 @@ using Npgsql;
 using Microsoft.Data.SqlClient;
 using Loom.Demo;
 
+// Offline key operations run before authentication, databases or background workers start.
+if(args.Length>0&&args[0].StartsWith("--jobs-key-",StringComparison.Ordinal))
+{
+    try
+    {
+        DeliveryKeyRingInfo info=args[0] switch
+        {
+            "--jobs-key-create" when args.Length==2=>DeliveryPayloadKeyRingFile.Create(args[1]),
+            "--jobs-key-check" when args.Length==2=>DeliveryPayloadKeyRingFile.Inspect(args[1]),
+            "--jobs-key-rotate" when args.Length==3=>DeliveryPayloadKeyRingFile.Rotate(args[1],args[2]),
+            _=>throw new ArgumentException("Use --jobs-key-create FILE, --jobs-key-check FILE, or --jobs-key-rotate SOURCE NEW-FILE.")
+        };
+        Console.WriteLine($"Key ring valid. Active: {info.CurrentKey}; retained keys: {info.KeyIds.Count}.");
+        if(args[0]=="--jobs-key-rotate")Console.WriteLine("Source unchanged. Back up the new ring, select it in Jobs:KeyRingFile, and restart producers/workers together.");
+    }
+    catch(Exception error) when(error is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+    {Console.Error.WriteLine(error.Message);Environment.ExitCode=1;}
+    return;
+}
+
 if(args.Contains("--tenant-jobs-demo")){await TenantDeliveryDemo.Run();return;}
 if(args.Contains("--outbox-demo")){await OutboxDemo.Run();return;}
 

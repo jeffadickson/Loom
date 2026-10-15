@@ -55,6 +55,20 @@ with tempfile.TemporaryDirectory() as temp:
                     if isinstance(data,dict) and 'values' in data:
                         assert 'Payload' not in data['values'];assert 'LeaseToken' not in data['values']
     finally:connection.close()
+    # Rotate while offline, preserve the original, then recover using a separately copied key-ring file.
+    original_keys=directory/'keys.json';rotated_keys=Path(temp)/'rotated.json';recovered_keys=Path(temp)/'recovered.json'
+    original_bytes=original_keys.read_bytes()
+    rotated=subprocess.run([dotnet,str(demo),'--jobs-key-rotate',str(original_keys),str(rotated_keys)],capture_output=True,text=True,check=True)
+    assert original_keys.read_bytes()==original_bytes
+    import shutil
+    shutil.copyfile(rotated_keys,recovered_keys)
+    checked=subprocess.run([dotnet,str(demo),'--jobs-key-check',str(recovered_keys)],capture_output=True,text=True,check=True)
+    assert 'retained keys: 2' in checked.stdout
+    for secret in json.loads(rotated_keys.read_text())['Keys'].values():
+        assert secret not in rotated.stdout+rotated.stderr+checked.stdout+checked.stderr
+    denied=subprocess.run([dotnet,str(demo),'--jobs-key-create',str(original_keys)],capture_output=True,text=True)
+    assert denied.returncode!=0 and original_keys.read_bytes()==original_bytes
+    env['Jobs__KeyRingFile']=str(recovered_keys)
     env['Jobs__PauseWorker']='false'
     with logpath.open('a') as log:
         host=subprocess.Popen([dotnet,str(demo),'--tenant-operations-demo'],cwd=root/'src/Loom.Demo',env=env,stdout=log,stderr=log)
@@ -67,5 +81,5 @@ with tempfile.TemporaryDirectory() as temp:
             else:raise AssertionError('Protected delivery did not resume after restart')
             assert api(south,'/api/jobs/tenants/south/records/Receipt')['total']==0
             assert api(north,'/api/jobs/tenants/north/records/Receipt')['items'][0]['values']['Message']=='Protected delivery received'
-            print('PASS tenant operations: membership isolation, global-role denial, protected restart, audit minimization')
+            print('PASS tenant operations: membership isolation, global-role denial, protected restart after key rotation/recovery, audit minimization')
         finally:host.terminate();host.wait(timeout=10)

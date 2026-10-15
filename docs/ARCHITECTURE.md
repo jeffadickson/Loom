@@ -308,3 +308,10 @@ key ID. RecurringSchedules shares the policy. AuditRedactionPolicy removes stabl
 from new stored snapshots and survives Atomic nesting. Bounded failed-payload expiry keeps keys and
 metadata but disables retry. See [protected operations](PROTECTED_TENANT_OPERATIONS.md) for setup,
 key rotation, historical-data limits and the runnable --tenant-operations-demo.
+
+DeliveryPayloadKeyRingFile centralizes strict bounded parsing and offline file publication. Rotation
+retains historical keys in a new file, with a new active key. Same-directory temporary-file publication
+uses an exclusive destination lock and no-overwrite rename; source files remain unchanged. A stale
+lock fails closed pending operator review. The tenant host opens validated startup
+snapshots, and CLI operations execute before web/database/worker initialization. Recovery coverage uses
+a copied rotated ring to decrypt deliveries persisted by the prior host.

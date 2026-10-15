@@ -373,3 +373,14 @@ Implemented initial scope and remaining scale/integration goals are in FACILITY_
   prevent retry after expiration, and leave pending/in-flight/scheduled work unaffected.
 - **PAYLOAD-04:** Document key storage/recovery, old audit and backup retention, logical-deletion limits,
   and explicit migration of existing plaintext queues. Verify restart and tenant isolation in CI.
+
+## Protected-payload key operations
+
+- **KEY-01:** Provide offline create, inspect and rotate commands with non-secret output and nonzero
+  failure status. Preserve the existing key-ring format and validate bounded, unambiguous input.
+- **KEY-02:** Publish complete key files without overwriting existing destinations; restrict Unix
+  creation permissions and document Windows ACL ownership and trusted parent directories.
+- **KEY-03:** Rotation retains all historical keys in a new file, leaves the source unchanged and
+  requires an explicit coordinated host configuration switch. Do not implement automatic key deletion.
+- **KEY-04:** Verify encrypted delivery recovery across rotation/restart and a copied recovery ring;
+  test malformed files, duplicate identifiers, concurrent publication and secret-free diagnostics.
