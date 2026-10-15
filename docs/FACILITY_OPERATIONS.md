@@ -159,3 +159,10 @@ attachments, generalized discrepancy/provenance models, native PDF export, OpenT
 offline acquisition synchronization, TestForge and instrument-library integration, PostgreSQL/
 SQL Server facility routing and coordinated account recovery. The application does not claim
 electronic signature certification, flight qualification or remote internet deployment.
+
+### Shared workflow and job primitives
+
+Start, Cancel and QueueRelease now use Core's ApplicationWorkflow. Calibration/time checks and
+assignment remain C# guards; cancellation reason and enqueue are atomic effects. Report processing
+and manager retry use TransactionalJobs, preserving the existing ReleaseJob schema and restart behavior.
+Record/Review retain their specialized atomic domain actions. See APPLICATION_WORKFLOWS_JOBS.md.

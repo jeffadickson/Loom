@@ -65,13 +65,13 @@ public sealed class FacilityApplication
         if(!states.Contains(Value(request,"Status")))throw new LoomException(409,"This action is not available in the current state.");
         return request;
     }
-    private static Document Change(TenantSession s,Document d,string status,Action<JsonObject>? edit=null)
+    private static Document Change(IApplicationSession s,Document d,string status,Action<JsonObject>? edit=null)
     {
         var values=(JsonObject)d.Values.DeepClone();values["Status"]=status;edit?.Invoke(values);
         return s.Update(d.Type,d.Id,d.Version,values);
     }
     /// <summary>Reads all pages for invariant checks; never truncates reservations to the visible page.</summary>
-    private static IReadOnlyList<Document> All(TenantSession s,string type)
+    private static IReadOnlyList<Document> All(IApplicationSession s,string type)
     {
         var schema=FacilityModel.Catalog.Get(type);var items=new List<Document>();Page page;
         do {
@@ -86,7 +86,7 @@ public sealed class FacilityApplication
         return new(schema.Fields.Single(f=>f.Name==schema.TitleField).Id!,Skip:skip,Take:take,Search:search,Filters:filters,
             SelectFieldIds:schema.Fields.Where(f=>f.Type!="Binary").Select(f=>f.Id!).ToArray());
     }
-    private static Page SummaryPage(TenantSession s,string type,int skip=0,int take=25,string? search=null,FieldFilter[]? filters=null)
+    private static Page SummaryPage(IApplicationSession s,string type,int skip=0,int take=25,string? search=null,FieldFilter[]? filters=null)
     {
         var query=SummaryQuery(type,skip,take,search,filters);
         var visible=s.Describe(type).Fields.Select(f=>f.Id).ToHashSet();
@@ -194,23 +194,30 @@ public sealed class FacilityApplication
     public Document Start(string user,string tenant,string id,int version)
     {
         using var s=Open(user,tenant);Require(s,"Operator");
-        return s.Atomic(t=>
-        {
-            var d=Expected(t,id,version,"Scheduled","ChangesRequested");Assigned(d,user);
-            var now=clock.GetUtcNow();
-            if(now<Instant(Value(d,"Starts"))||now>=Instant(Value(d,"Ends")))
-                throw new LoomException(422,"Start within the reserved interval; ask the manager for a new request if it has expired.");
-            CheckCalibration(t.Get("Calibration",Value(d,"Calibration")),Value(d,"Instrument"),now,now);
-            return Change(t,d,"Running",v=>{v["Attempt"]=int.Parse(Value(d,"Attempt"))+1;v["StartedAt"]=now.ToString("O");});
-        });
+        var workflow=new ApplicationWorkflow(RequestStatusId,[new("Start",["Scheduled","ChangesRequested"],"Running",["Operator"],
+            Guard:context=>
+            {
+                var d=context.Document;Assigned(d,user);var now=clock.GetUtcNow();
+                if(now<Instant(Value(d,"Starts"))||now>=Instant(Value(d,"Ends")))
+                    throw new LoomException(422,"Start within the reserved interval; ask the manager for a new request if it has expired.");
+                CheckCalibration(context.Session.Get("Calibration",Value(d,"Calibration")),Value(d,"Instrument"),now,now);
+            },Effect:(context,values)=>
+            {
+                values["Attempt"]=int.Parse(Value(context.Document,"Attempt"))+1;
+                values["StartedAt"]=clock.GetUtcNow().ToString("O");
+            })]);
+        return workflow.Execute(s,"Request",id,version,"Start");
     }
+    private static string RequestStatusId=>FacilityModel.Catalog.Get("Request").Fields.Single(f=>f.Name=="Status").Id!;
+
     /// <summary>Explicit cancellation releases a reservation while retaining its request and evidence audit.</summary>
     public Document Cancel(string user,string tenant,string id,int version,string reason)
     {
         using var s=Open(user,tenant);Require(s,"Manager");
         if(string.IsNullOrWhiteSpace(reason))throw new LoomException(422,"Explain why this request is being cancelled.");
-        return s.Atomic(t=>Change(t,Expected(t,id,version,"Scheduled","Running","ChangesRequested"),"Cancelled",
-            v=>v["CancellationReason"]=reason));
+        var workflow=new ApplicationWorkflow(RequestStatusId,[new("Cancel",["Scheduled","Running","ChangesRequested"],"Cancelled",["Manager"],
+            Effect:(_,values)=>values["CancellationReason"]=reason)]);
+        return workflow.Execute(s,"Request",id,version,"Cancel");
     }
     private static void Assigned(Document request,string user)
     {if(Value(request,"Operator")!=user)throw new LoomException(403,"Only the assigned operator may execute this request.");}
@@ -252,27 +259,19 @@ public sealed class FacilityApplication
             return Change(t,d,input.Approve?"Approved":"ChangesRequested");
         });
     }
-    private static Document CurrentResult(TenantSession s,Document request)=>All(s,"Result")
+    private static Document CurrentResult(IApplicationSession s,Document request)=>All(s,"Result")
         .Single(d=>Value(d,"Request")==request.Id&&Value(d,"Attempt")==Value(request,"Attempt"));
     public Document QueueRelease(string user,string tenant,string id,int version)
     {
         using var s=Open(user,tenant);Require(s,"Manager");
-        return s.Atomic(t=>
-        {
-            var d=Expected(t,id,version,"Approved");
-            t.Create("ReleaseJob",new(){["Name"]=Value(d,"Name"),["Request"]=id,["Status"]="Pending",["Attempts"]=0});
-            return Change(t,d,"ReleaseQueued");
-        });
+        var workflow=new ApplicationWorkflow(RequestStatusId,[new("QueueRelease",["Approved"],"ReleaseQueued",["Manager"],
+            Effect:(context,_)=>context.Session.Create("ReleaseJob",new(){["Name"]=Value(context.Document,"Name"),["Request"]=id,["Status"]="Pending",["Attempts"]=0}))]);
+        return workflow.Execute(s,"Request",id,version,"QueueRelease");
     }
     public void RetryRelease(string user,string tenant,string jobId,int version)
     {
         using var s=Open(user,tenant);Require(s,"Manager");
-        s.Atomic(t=>
-        {
-            var job=t.Get("ReleaseJob",jobId);
-            if(job.Version!=version||Value(job,"Status")!="Failed")throw new LoomException(409,"Only a current failed job can be retried.");
-            return Change(t,job,"Pending",v=>{v["Attempts"]=0;v["Error"]=null;});
-        });
+        new TransactionalJobs().Retry(s,"ReleaseJob",jobId,version);
     }
     /// <summary>
     /// Local durable report worker: claim, snapshot, publication and completion share one SQLite transaction.
@@ -286,32 +285,19 @@ public sealed class FacilityApplication
             using var s=workspace.Open(Worker,tenant);
             foreach(var candidate in All(s,"ReleaseJob").Where(j=>Value(j,"Status")=="Pending"))
             {
-                try
+                var outcome=new TransactionalJobs().Run(s,candidate,(t,job)=>
                 {
-                    count+=s.Atomic(t=>
-                    {
-                        var job=t.Get("ReleaseJob",candidate.Id);if(Value(job,"Status")!="Pending")return 0;
-                        var request=t.Get("Request",Value(job,"Request"));var result=CurrentResult(t,request);
-                        var review=All(t,"Review").Single(r=>Value(r,"Result")==result.Id&&Value(r,"Decision")=="Approved");
-                        if(Value(request,"Status")!="ReleaseQueued")throw new InvalidOperationException("Request is not queued.");
-                        var at=clock.GetUtcNow().ToString("O");
-                        var html=Report(t,tenant,request,result,review,at);
-                        t.Create("Release",new(){["Name"]=Value(request,"Name")+" / release 1",["Request"]=request.Id,
-                            ["Result"]=result.Id,["Review"]=review.Id,["ReleasedAt"]=at,["Html"]=Convert.ToBase64String(Encoding.UTF8.GetBytes(html)),["Sha256"]=Hash(Encoding.UTF8.GetBytes(html))});
-                        Change(t,request,"Released");Change(t,job,"Complete",v=>v["Attempts"]=int.Parse(Value(job,"Attempts"))+1);return 1;
-                    });
-                }
-                catch(Exception ex) when(ex is LoomException or InvalidOperationException)
-                {
-                    s.Atomic(t=>
-                    {
-                        var job=t.Get("ReleaseJob",candidate.Id);if(Value(job,"Status")!="Pending")return job;
-                        var attempts=int.Parse(Value(job,"Attempts"))+1;
-                        return Change(t,job,attempts>=3?"Failed":"Pending",v=>{v["Attempts"]=attempts;v["Error"]="Report generation failed. Check the server log and request evidence.";});
-                    });
-                    // Hosts receive diagnostic detail, never raw exception text in browser-facing records.
-                    ReleaseFailed?.Invoke(tenant,candidate.Id,ex);
-                }
+                    var request=t.Get("Request",Value(job,"Request"));var result=CurrentResult(t,request);
+                    var review=All(t,"Review").Single(r=>Value(r,"Result")==result.Id&&Value(r,"Decision")=="Approved");
+                    if(Value(request,"Status")!="ReleaseQueued")throw new InvalidOperationException("Request is not queued.");
+                    var at=clock.GetUtcNow().ToString("O");
+                    var html=Report(t,tenant,request,result,review,at);
+                    t.Create("Release",new(){["Name"]=Value(request,"Name")+" / release 1",["Request"]=request.Id,
+                        ["Result"]=result.Id,["Review"]=review.Id,["ReleasedAt"]=at,["Html"]=Convert.ToBase64String(Encoding.UTF8.GetBytes(html)),["Sha256"]=Hash(Encoding.UTF8.GetBytes(html))});
+                    Change(t,request,"Released");
+                },"Report generation failed. Check the server log and request evidence.");
+                if(outcome.Completed)count++;
+                if(outcome.Exception!=null)ReleaseFailed?.Invoke(tenant,candidate.Id,outcome.Exception);
             }
         }
         return count;
@@ -330,7 +316,7 @@ public sealed class FacilityApplication
     }
     public void Backup(string tenant,string archive)=>workspace.Backup(tenant,archive);
     private static string Hash(byte[] bytes)=>Convert.ToHexString(SHA256.HashData(bytes));
-    private static string Report(TenantSession s,string tenant,Document request,Document result,Document review,string at)
+    private static string Report(IApplicationSession s,string tenant,Document request,Document result,Document review,string at)
     {
         string E(string text)=>WebUtility.HtmlEncode(text);
         var html=new StringBuilder("<!doctype html><html lang=en><meta charset=utf-8><title>Test release</title><style>body{font:16px system-ui;max-width:900px;margin:40px auto;color:#172a39}h1{font-size:32px}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #ccc;overflow-wrap:anywhere}th{width:28%}section{break-inside:avoid}pre{white-space:pre-wrap}@media print{.evidence{break-before:page}body{margin:0}}</style><body>");

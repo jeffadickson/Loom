@@ -252,3 +252,13 @@ server fallback limits and the distinction between returned bytes and physical s
 DocumentService.Describe supplies a role-filtered DocumentForm contract. The shared browser form
 renderer consumes field definitions directly; application workflow actions remain handwritten C#.
 Facility lists are bounded, with separate totals and on-demand request detail.
+
+## Application workflows and transactional jobs
+
+Core's IApplicationSession binds authorized operations to atomic scopes for every document provider;
+TenantSession implements it with fresh membership checks. ApplicationWorkflow applies stable-field
+state transitions and trusted C# guards/effects within that scope. TransactionalJobs extracts Facility's
+persisted database-only worker pattern, including version fencing, retry limits and failure accounting.
+The application owns the job schema, host polling and domain rules. Identity's external email outbox
+remains separate. See [application workflows and jobs](APPLICATION_WORKFLOWS_JOBS.md) for examples,
+transaction boundaries and remaining scheduler/outbox requirements.

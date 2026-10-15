@@ -298,3 +298,14 @@ Implemented initial scope and remaining scale/integration goals are in FACILITY_
   immutable records shall not advertise edits. Server validation remains authoritative.
 - Facility lists shall page at 25 records and display global totals. Link lookup shall reach records
   outside the first page. Register field definitions shall not be duplicated in application JavaScript.
+
+## Application workflow and job primitives
+
+- **FLOW-01:** Application state transitions use stable field IDs, named actions, allowed source
+  states/roles, expected versions and synchronous C# guards/effects. Related records, state and audit
+  commit atomically. Existing document permissions remain authoritative.
+- **JOB-01:** A provider-independent database-only runner executes persisted pending jobs, atomically
+  completes effects, records bounded failed attempts, suppresses stale candidates and allows
+  authorized failed-job retry. Process restart preserves pending work; cancellation consumes no attempt.
+- **JOB-02:** Explicitly distinguish transactional database work from external side effects. External
+  delivery, scheduling/backoff and worker leases remain tracked by #24; no exactly-once external guarantee.

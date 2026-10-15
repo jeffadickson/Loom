@@ -104,7 +104,7 @@ public sealed class TenantWorkspace
 /// Authorized tenant capability. No caller-supplied role, raw store or unscoped service
 /// escapes this wrapper. Dispose at the end of a request; do not cache across requests.
 /// </summary>
-public sealed class TenantSession : IDisposable
+public sealed class TenantSession : IDisposable, IApplicationSession
 {
     private readonly SqliteStore store;
     private readonly Catalog catalog;
@@ -121,6 +121,8 @@ public sealed class TenantSession : IDisposable
         using var session=new TenantSession(store,catalog,actor,scoped);
         return action(session);
     });
+    public Actor Identity=>actor();
+    T IApplicationSession.Atomic<T>(Func<IApplicationSession,T> action)=>Atomic(s=>action(s));
     public string Role=>actor().Role;
     public DocumentForm Describe(string type)=>service.Describe(type,actor());
     public Page List(string type,string? search=null)=>service.List(type,actor(),search);

@@ -18,6 +18,65 @@ public abstract class RepositoryContract
     {
         var model=Model();store.Migrate(model);return new(model,store,[]);
     }
+    private static Catalog WorkModel()=>new([new("Work","Work",1,"Name",false,
+        [new("Name","Name","Text",true),new("Status","Status","Text",true),new("Attempts","Attempts","Integer",true),new("Error","Error","Text")],
+        new(){["Admin"]=["read","create","write","audit"]})]);
+    [Fact] public void WorkflowGuardsEffectsAndAuditAreAtomic()
+    {
+        using var store=Open();var model=WorkModel();store.Migrate(model);
+        var service=new DocumentService(model,store,[]);var session=new ApplicationSession(service,Admin);
+        var job=session.Create("Work",new(){["Name"]="original",["Status"]="Pending",["Attempts"]=0});
+        var field=model.Get("Work").Fields.Single(f=>f.Name=="Status").Id!;
+        var fail=new ApplicationWorkflow(field,[new("Run",["Pending"],"Complete",["Admin"],Effect:(c,_)=>
+        {
+            c.Session.Create("Work",new(){["Name"]="effect",["Status"]="Pending",["Attempts"]=0});
+            throw new InvalidOperationException("rollback");
+        })]);
+        Assert.Throws<InvalidOperationException>(()=>fail.Execute(session,"Work",job.Id,job.Version,"Run"));
+        Assert.Equal(1,service.List("Work",Admin).Total);Assert.Single(service.History("Work",job.Id,Admin));
+        var pass=new ApplicationWorkflow(field,[new("Run",["Pending"],"Complete",["Admin"],Guard:c=>
+        {if(c.Document.Values["Name"]!.ToString()!="original")throw new InvalidOperationException();})]);
+        var denied=new ApplicationSession(service,new("viewer","Viewer"));
+        Assert.Equal(403,Assert.Throws<LoomException>(()=>pass.Execute(denied,"Work",job.Id,job.Version,"Run")).Status);
+        var done=pass.Execute(session,"Work",job.Id,job.Version,"Run");
+        Assert.Equal("Complete",done.Values["Status"]!.ToString());Assert.Equal(2,service.History("Work",job.Id,Admin).Count);
+        Assert.Equal(409,Assert.Throws<LoomException>(()=>pass.Execute(session,"Work",job.Id,job.Version,"Run")).Status);
+        Assert.Equal(409,Assert.Throws<LoomException>(()=>pass.Execute(session,"Work",job.Id,done.Version,"Run")).Status);
+    }
+    [Fact] public void DurableJobFailureRollsBackEffectsAndRetryDoesNotDuplicateCompletion()
+    {
+        using var store=Open();var model=WorkModel();store.Migrate(model);
+        var service=new DocumentService(model,store,[]);var session=new ApplicationSession(service,Admin);
+        var job=session.Create("Work",new(){["Name"]="job",["Status"]="Pending",["Attempts"]=0});
+        var runner=new TransactionalJobs(2);
+        void Fail(IApplicationSession s,Document _)
+        {
+            s.Create("Work",new(){["Name"]="rolled back",["Status"]="Pending",["Attempts"]=0});
+            throw new InvalidOperationException("private diagnostic");
+        }
+        var outcome=runner.Run(session,job,Fail);
+        Assert.NotNull(outcome.Exception);Assert.False(outcome.Failed);Assert.Equal(1,service.List("Work",Admin).Total);
+        var pending=session.Get("Work",job.Id);Assert.Equal("1",pending.Values["Attempts"]!.ToString());
+        Assert.DoesNotContain("private",pending.Values["Error"]!.ToString());
+        Assert.False(runner.Run(session,job,(_,_)=>throw new Exception("stale handler ran")).Completed);
+        Assert.Equal(pending.Version,session.Get("Work",job.Id).Version);
+        Assert.True(runner.Run(session,pending,Fail).Failed);
+        var failed=session.Get("Work",job.Id);Assert.Equal("Failed",failed.Values["Status"]!.ToString());
+        var retry=runner.Retry(session,"Work",job.Id,failed.Version);
+        var completed=runner.Run(session,retry,(s,_)=>s.Create("Work",new(){["Name"]="published",["Status"]="Complete",["Attempts"]=0}));
+        Assert.True(completed.Completed);Assert.Equal(2,service.List("Work",Admin).Total);
+        Assert.False(runner.Run(session,retry,(_,_)=>throw new Exception("duplicate handler ran")).Completed);
+        Assert.Equal("Complete",session.Get("Work",job.Id).Values["Status"]!.ToString());
+    }
+    [Fact] public void JobCancellationRollsBackWithoutConsumingAttempt()
+    {
+        using var store=Open();var model=WorkModel();store.Migrate(model);
+        var session=new ApplicationSession(new DocumentService(model,store,[]),Admin);
+        var job=session.Create("Work",new(){["Name"]="job",["Status"]="Pending",["Attempts"]=0});
+        Assert.Throws<OperationCanceledException>(()=>new TransactionalJobs().Run(session,job,(_,_)=>throw new OperationCanceledException()));
+        Assert.Equal(job.Version,session.Get("Work",job.Id).Version);
+    }
+
     [Fact] public void ProjectionPreservesFilteringPagingAndExactSelectedValues()
     {
         using var store=Open();var service=Service(store);var schema=Model().Get("Reading");
