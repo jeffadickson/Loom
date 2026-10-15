@@ -100,7 +100,7 @@ public sealed class FacilityApplicationTests : IDisposable
             ["ValidFrom"]="2020-01-01",["ValidUntil"]="2020-12-31",["Certificate"]="Old certificate"});
         Assert.Equal(422,Assert.Throws<LoomException>(()=>app.Schedule("north-manager","north",input with{Calibration=expired.Id})).Status);
     }
-    [Fact] public void AtomicOperationsRollbackWritesAuditAndExpireEscapedCapability()
+    [Fact] public async Task AtomicOperationsRollbackWritesAuditAndExpireEscapedCapability()
     {
         var workspace=new TenantWorkspace(root,["north"],(_,_)=>"Manager",access:new FacilityPolicy());
         using var session=workspace.Open("north-manager","north");TenantSession? escaped=null;
@@ -112,7 +112,7 @@ public sealed class FacilityApplicationTests : IDisposable
         Assert.DoesNotContain(session.List("Instrument").Items,d=>V(d,"Serial")=="ROLLBACK");
         Assert.Throws<ObjectDisposedException>(()=>escaped!.List("Instrument"));
         var invoked=false;
-        Assert.Throws<InvalidOperationException>(()=>{session.Atomic(s=>{invoked=true;return Task.FromResult(1);});});
+        await Assert.ThrowsAsync<InvalidOperationException>(()=>session.Atomic(s=>{invoked=true;return Task.FromResult(1);}));
         Assert.False(invoked);
     }
     [Fact] public void CancellationReleasesReservationWithoutDeletingItsHistory()
