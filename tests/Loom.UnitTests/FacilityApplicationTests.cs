@@ -182,7 +182,8 @@ public sealed class FacilityApplicationTests : IDisposable
     [Fact] public void CorruptStoredDigestsBlockDownloadAndExport()
     {
         var app=App();var release=Released(app);var result=Assert.Single(app.Overview("north-manager","north").Records["Result"]);
-        using var connection=new Microsoft.Data.Sqlite.SqliteConnection("Data Source="+Path.Combine(root,"north","documents.db"));connection.Open();
+        using var connection=new Microsoft.Data.Sqlite.SqliteConnection(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+        {DataSource=Path.Combine(root,"north","documents.db"),Pooling=false}.ToString());connection.Open();
         using var command=connection.CreateCommand();command.CommandText="UPDATE Result SET Sha256='corrupted'";command.ExecuteNonQuery();
         Assert.Equal(409,Assert.Throws<LoomException>(()=>app.Evidence("north-reviewer","north",result.Id)).Status);
         Assert.Equal(409,Assert.Throws<LoomException>(()=>app.ExportRelease("north-reviewer","north",release.Id)).Status);

@@ -42,3 +42,11 @@ actual changes and checks; final qualification is recorded below after execution
 
 No production deployment, load qualification, signing, remote dataset capture, large-file streaming,
 or expansion of the existing 1 MiB Facility evidence limit is claimed by this batch.
+
+## CI follow-up
+
+The first published batch passed Linux, server conformance and PostgreSQL/SQL Server
+Testcontainers. Windows found that the corruption test's direct SQLite connection used the
+default pool, retaining a file handle after disposal and preventing temporary-directory cleanup.
+The follow-up sets `Pooling=false` on that test-only connection; application assertions and
+production connection handling are unchanged. Cross-platform CI is rerun for this correction.
