@@ -71,16 +71,6 @@ public sealed class FacilityApplication
         var values=(JsonObject)d.Values.DeepClone();values["Status"]=status;edit?.Invoke(values);
         return s.Update(d.Type,d.Id,d.Version,values);
     }
-    /// <summary>Reads all pages for invariant checks; never truncates reservations to the visible page.</summary>
-    private static IReadOnlyList<Document> All(IApplicationSession s,string type)
-    {
-        var schema=FacilityModel.Catalog.Get(type);var items=new List<Document>();Page page;
-        do {
-            page=SummaryPage(s,type,items.Count,200);
-            items.AddRange(page.Items);
-        } while(items.Count<page.Total);
-        return items;
-    }
     private static DocumentQuery SummaryQuery(string type,int skip=0,int take=25,string? search=null,FieldFilter[]? filters=null)
     {
         var schema=FacilityModel.Catalog.Get(type);
@@ -286,14 +276,20 @@ public sealed class FacilityApplication
     /// Local durable report worker: claim, snapshot, publication and completion share one SQLite transaction.
     /// A process failure rolls back to Pending; competing workers recheck under the write lock.
     /// </summary>
-    public int ProcessReleases()
+    public int ProcessReleases(int batchSize=25,CancellationToken cancellationToken=default)
     {
+        if(batchSize is <1 or >100)throw new ArgumentOutOfRangeException(nameof(batchSize));
+        cancellationToken.ThrowIfCancellationRequested();
         var count=0;
         foreach(var tenant in members.Select(m=>m.TenantId).Distinct())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             using var s=workspace.Open(Worker,tenant);
-            foreach(var candidate in All(s,"ReleaseJob").Where(j=>Value(j,"Status")=="Pending"))
+            var statusId=FacilityModel.Catalog.Get("ReleaseJob").Fields.Single(f=>f.Name=="Status").Id!;
+            var candidates=SummaryPage(s,"ReleaseJob",take:batchSize,filters:[new(statusId,FilterOperator.Equal,JsonValue.Create("Pending"))]);
+            foreach(var candidate in candidates.Items)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var outcome=new TransactionalJobs().Run(s,candidate,(t,job)=>
                 {
                     var request=t.Get("Request",Value(job,"Request"));var result=CurrentResult(t,request);

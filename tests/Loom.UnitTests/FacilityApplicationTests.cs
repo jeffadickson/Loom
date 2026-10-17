@@ -190,6 +190,24 @@ public sealed class FacilityApplicationTests : IDisposable
         Assert.Equal(409,Assert.Throws<LoomException>(()=>app.ReleasedReport("north-reviewer","north",release.Id)).Status);
     }
 
+    [Fact] public void ReleaseWorkerBatchesAreBoundedAndCancellationLeavesPendingWork()
+    {
+        var app=App();var first=Request(app);
+        void Queue(Document request)
+        {
+            request=app.Start("north-operator","north",request.Id,request.Version);
+            request=app.Record("north-operator","north",request.Id,Evidence(request));
+            request=app.Review("north-reviewer","north",request.Id,new(request.Version,true,"Approved."));
+            app.QueueRelease("north-manager","north",request.Id,request.Version);
+        }
+        Queue(first);
+        Queue(app.Schedule("north-manager","north",Input(first) with{Starts=V(first,"Starts"),Ends=V(first,"Ends")}));
+        Assert.Throws<ArgumentOutOfRangeException>(()=>app.ProcessReleases(0));
+        Assert.Throws<OperationCanceledException>(()=>app.ProcessReleases(cancellationToken:new CancellationToken(true)));
+        Assert.Empty(app.Overview("north-manager","north").Records["Release"]);
+        Assert.Equal(1,app.ProcessReleases(1));Assert.Equal(1,app.ProcessReleases(1));Assert.Equal(0,app.ProcessReleases(1));
+    }
+
     public void Dispose()=>Directory.Delete(root,true);
     private sealed class FixedClock(DateTimeOffset now):TimeProvider
     {public override DateTimeOffset GetUtcNow()=>now;}

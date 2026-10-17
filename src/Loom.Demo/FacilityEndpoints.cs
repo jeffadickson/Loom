@@ -82,7 +82,8 @@ internal static class FacilityEndpoints
             {
                 while(await timer.WaitForNextTickAsync(stop))
                 {
-                    try { facility.ProcessReleases(); }
+                    try { facility.ProcessReleases(cancellationToken:stop); }
+                    catch(OperationCanceledException) when(stop.IsCancellationRequested){throw;}
                     catch(Exception e) { Console.Error.WriteLine("Facility release worker: "+e); }
                 }
             }
