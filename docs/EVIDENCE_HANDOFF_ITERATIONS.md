@@ -23,3 +23,4 @@ actual changes and checks; final qualification is recorded below after execution
 | 15 | Search all facility records through paged provider queries | JavaScript syntax checked; search resets page offsets and removes misleading current-page-only filtering. |
 | 16 | Discard stale facility responses across account and tenant changes | Reviewed request generations for load, paging, detail, download and delayed file submission; JavaScript syntax passes. |
 | 17 | Exercise package downloads search and delayed account responses in Chromium | Real browser workflow passes, including off-page search, ZIP download, mobile layout and delayed North response after South login. |
+| 18 | Independently verify exported archives and offline CLI after restart | Python ZIP/hash checks and real CLI success, corruption, missing-file and usage failures pass after persisted worker restart. |

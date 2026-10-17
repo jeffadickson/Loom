@@ -1,5 +1,5 @@
 """Run the real two-laboratory app, browser workflow and pending-job restart drill."""
-import http.cookiejar, json, os, subprocess, sys, tempfile, time, urllib.request
+import hashlib, http.cookiejar, io, json, os, subprocess, sys, tempfile, time, urllib.request, zipfile
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 dotnet=str(Path(sys.argv[1]).resolve()) if len(sys.argv)>1 and Path(sys.argv[1]).exists() else (sys.argv[1] if len(sys.argv)>1 else 'dotnet')
@@ -42,6 +42,37 @@ with tempfile.TemporaryDirectory() as tmp:
             assert b'20.125' in html and b'north-reviewer' in html and b'SYNTHETIC-CAL' in html
             assert overview['records']['Request'][0]['values']['Status']=='Released'
             assert overview['records']['ReleaseJob'][0]['values']['Status']=='Complete'
+            package=api('/api/facility/north/releases/'+release['id']+'/package')
+            with zipfile.ZipFile(io.BytesIO(package)) as archive:
+                manifest=json.loads(archive.read('manifest.json'))
+                assert manifest['version']==1 and len(manifest['files'])==4
+                assert set(archive.namelist())=={'manifest.json','report.html','evidence.bin','provenance.json','readme.txt'}
+                for item in manifest['files']:
+                    content=archive.read(item['path'])
+                    assert len(content)==item['length']
+                    assert hashlib.sha256(content).hexdigest().upper()==item['sha256']
+                assert archive.read('report.html')==html
+                provenance=json.loads(archive.read('provenance.json'))
+                assert provenance['tenant']=='north' and len(provenance['records'])==9
+                assert b'Waveform' not in archive.read('provenance.json')
+                entries={name:archive.read(name) for name in archive.namelist()}
+            packagepath=Path(tmp)/'evidence.zip';packagepath.write_bytes(package)
+            # The verifier must return before Identity/database/host initialization.
+            offlineenv=dict(os.environ,Authentication__Mode='Identity')
+            def verify(*args):
+                return subprocess.run([dotnet,str(demo),'--verify-evidence',*map(str,args)],cwd=tmp,
+                    env=offlineenv,capture_output=True,text=True,timeout=30)
+            checked=verify(packagepath)
+            assert checked.returncode==0,checked.stderr
+            assert 'Evidence integrity verified' in checked.stdout
+            with zipfile.ZipFile(packagepath,'w',compression=zipfile.ZIP_DEFLATED) as archive:
+                for name,content in entries.items():
+                    archive.writestr(name,b'corrupted' if name=='evidence.bin' else content)
+            assert verify(packagepath).returncode!=0
+            assert verify(Path(tmp)/'missing.zip').returncode!=0
+            assert verify().returncode!=0
+            assert not (Path(tmp)/'report.html').exists()
+            print('PASS independent ZIP hashes, selected provenance and offline CLI success/corruption/usage checks')
             # Browser inspects recovered report and responsive layout without rerunning the completed workflow.
             subprocess.run([os.environ.get('NODE','node'),str(root/'tools/test_facility_recovery.cjs')],env=dict(os.environ,FACILITY_ORIGIN=origin),check=True)
             print('PASS persisted queued report resumes after process restart and produces exactly one release')
