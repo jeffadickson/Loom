@@ -146,6 +146,26 @@ public sealed class FacilityApplicationTests : IDisposable
         Assert.DoesNotContain(app.Overview("north-operator","north").Forms.Single(f=>f.Name=="Campaign").Fields,f=>f.Name=="Budget");
     }
 
+    private Document Released(FacilityApplication app)
+    {
+        var request=Request(app);
+        request=app.Start("north-operator","north",request.Id,request.Version);
+        request=app.Record("north-operator","north",request.Id,Evidence(request));
+        request=app.Review("north-reviewer","north",request.Id,new(request.Version,true,"Reviewed for handoff."));
+        app.QueueRelease("north-manager","north",request.Id,request.Version);Assert.Equal(1,app.ProcessReleases());
+        return Assert.Single(app.Overview("north-manager","north").Records["Release"]);
+    }
+    [Fact] public void ReleaseExportIsAuthorizedRepeatableAndSurvivesRestart()
+    {
+        var app=App();var release=Released(app);
+        var bytes=app.ExportRelease("north-manager","north",release.Id);
+        Assert.Contains(Loom.Core.Science.EvidencePackage.Verify(bytes).Files,f=>f.Path=="evidence.bin");
+        Assert.Equal(bytes,App().ExportRelease("north-reviewer","north",release.Id));
+        Assert.Equal(403,Assert.Throws<LoomException>(()=>app.ExportRelease("north-operator","north",release.Id)).Status);
+        Assert.Equal(403,Assert.Throws<LoomException>(()=>app.ExportRelease("south-manager","north",release.Id)).Status);
+        Assert.Equal(404,Assert.Throws<LoomException>(()=>app.ExportRelease("south-manager","south",release.Id)).Status);
+    }
+
     public void Dispose()=>Directory.Delete(root,true);
     private sealed class FixedClock(DateTimeOffset now):TimeProvider
     {public override DateTimeOffset GetUtcNow()=>now;}

@@ -305,6 +305,21 @@ public sealed class FacilityApplication
     public event Action<string,string,Exception>? ReleaseFailed;
     public string ReleasedReport(string user,string tenant,string id)
     {using var s=Open(user,tenant);Require(s,"Manager","Reviewer");return Encoding.UTF8.GetString(Convert.FromBase64String(Value(s.Get("Release",id),"Html")));}
+    /// <summary>Exports only the immutable report and selected approved attempt, in one authorized snapshot.</summary>
+    public byte[] ExportRelease(string user,string tenant,string id)
+    {
+        using var s=Open(user,tenant);Require(s,"Manager","Reviewer");
+        return s.Atomic(t=>
+        {
+            var release=t.Get("Release",id);
+            var result=t.Get("Result",Value(release,"Result"));
+            return Loom.Core.Science.EvidencePackage.Create(new Dictionary<string,byte[]>
+            {
+                ["report.html"]=Convert.FromBase64String(Value(release,"Html")),
+                ["evidence.bin"]=Convert.FromBase64String(Value(result,"Waveform"))
+            });
+        });
+    }
     public byte[] Evidence(string user,string tenant,string id)
     {using var s=Open(user,tenant);return Convert.FromBase64String(Value(s.Get("Result",id),"Waveform"));}
     public IReadOnlyList<AuditEntry> History(string user,string tenant,string type,string id)
