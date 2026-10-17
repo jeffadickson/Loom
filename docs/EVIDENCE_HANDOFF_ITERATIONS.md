@@ -21,3 +21,4 @@ actual changes and checks; final qualification is recorded below after execution
 | 13 | Bound release processing and honor cancellation between jobs | 16 focused checks pass, including two pending releases drained one per batch and cancellation before writes. |
 | 14 | Reject missing and oversized encoded evidence before allocation | Reviewed decode bound and rollback path; added null, empty, malformed and oversized input regression. |
 | 15 | Search all facility records through paged provider queries | JavaScript syntax checked; search resets page offsets and removes misleading current-page-only filtering. |
+| 16 | Discard stale facility responses across account and tenant changes | Reviewed request generations for load, paging, detail, download and delayed file submission; JavaScript syntax passes. |

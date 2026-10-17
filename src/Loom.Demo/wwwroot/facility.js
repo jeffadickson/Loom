@@ -1,6 +1,7 @@
 'use strict';
 const $=id=>document.getElementById(id);
 let data,tenant='',user='',view='requests',register='Instrument',operators=[],offsets={},pageTotals={},references={};
+let contextEpoch=0,loadSequence=0,detailSequence=0,sessionSequence=0,pageSequence=0,pageSequences={};
 const labels={AwaitingReview:'Awaiting review',ChangesRequested:'Changes requested',ReleaseQueued:'Report queued'};
 const text=value=>String(value??'');
 const escape=value=>text(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -15,23 +16,35 @@ async function api(path,body,method){
 }
 const route=path=>'/api/facility/'+encodeURIComponent(tenant)+path;
 async function download(path,filename){
+  const epoch=contextEpoch;
   const response=await fetch(route(path),{headers:{'X-Loom-Demo':'local'}});
   if(!response.ok)throw Error('Download denied or unavailable.');
-  const url=URL.createObjectURL(await response.blob()),a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const blob=await response.blob();if(epoch!==contextEpoch)return;
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 function notify(e){$('notice').textContent=e.message||e;}
+function clearContext(){
+  contextEpoch++;loadSequence++;detailSequence++;pageSequences={};clearTimeout(searchTimer);
+  data=null;operators=[];references={};offsets={};pageTotals={};
+  $('dialog').close();$('dialog-body').innerHTML='';$('content').innerHTML='';$('metrics').innerHTML='';
+  $('identity').textContent='';$('search').value='';$('notice').textContent='';$('create-request').hidden=true;
+}
 async function load(){
   if(!tenant)return;
-  [data,operators]=await Promise.all([api(route('/overview')),api(route('/operators'))]);
+  const epoch=contextEpoch,sequence=++loadSequence;pageSequences={};detailSequence++;
+  const [nextData,nextOperators]=await Promise.all([api(route('/overview')),api(route('/operators'))]);
+  if(epoch!==contextEpoch||sequence!==loadSequence)return;
+  data=nextData;operators=nextOperators;
   offsets={};pageTotals={...data.totals};references={};$('filter').value='';$('search').value='';
   $('identity').textContent=user+' / '+data.role;
   $('notice').textContent='';render();
 }
 async function session(){
-  const state=await api('/auth/session');
-  if(!state.authenticated){$('app').hidden=true;$('login').hidden=false;$('signout').hidden=true;$('tenant').innerHTML='';return;}
-  user=state.name;
-  const memberships=await api('/api/facility/memberships');
+  const sequence=++sessionSequence;
+  const state=await api('/auth/session');if(sequence!==sessionSequence)return;
+  if(!state.authenticated){clearContext();tenant='';user='';$('app').hidden=true;$('login').hidden=false;$('signout').hidden=true;$('tenant').innerHTML='';return;}
+  clearContext();const epoch=contextEpoch;user=state.name;
+  const memberships=await api('/api/facility/memberships');if(epoch!==contextEpoch||sequence!==sessionSequence)return;
   $('tenant').innerHTML=memberships.map(m=>'<option value="'+escape(m.tenantId)+'">'+escape(m.tenantId==='north'?'North laboratory':m.tenantId==='south'?'South laboratory':m.tenantId)+'</option>').join('');
   tenant=memberships.some(m=>m.tenantId===tenant)?tenant:memberships[0]?.tenantId||'';
   $('tenant').value=tenant;$('login').hidden=true;$('app').hidden=false;$('signout').hidden=false;
@@ -60,8 +73,12 @@ function bindPages(){
  document.querySelectorAll('[data-page-type]').forEach(button=>button.onclick=()=>pageRecords(button.dataset.pageType,Number(button.dataset.offset)).catch(notify));
 }
 async function pageRecords(type,skip=0){
+ if(!data)return;
+ const epoch=contextEpoch,sequence=++pageSequence,search=$('search').value,currentView=view;
+ pageSequences[type]=sequence;
  const status=type==='Request'&&$('filter').value?'&status='+encodeURIComponent($('filter').value):'';
  const page=await api(route('/records/'+type+'?skip='+skip+'&take=25'+status+'&search='+encodeURIComponent($('search').value)));
+ if(epoch!==contextEpoch||pageSequences[type]!==sequence||!data||search!==$('search').value||currentView!==view)return;
  data.records[type]=page.items;offsets[type]=skip;pageTotals[type]=page.total;render();
 }
 async function searchPages(){
@@ -93,8 +110,10 @@ function renderReleases(){
 }
 function dialog(title,body){$('dialog-title').textContent=title;$('dialog-body').innerHTML=body;$('dialog-error').textContent='';if(!$('dialog').open)$('dialog').showModal();}
 async function detail(id){
+  const epoch=contextEpoch,sequence=++detailSequence;
   let details;
   try{details=await api(route('/requests/'+id));}catch(e){notify(e);return;}
+  if(epoch!==contextEpoch||sequence!==detailSequence||!data)return;
   for(const [type,doc] of Object.entries(details.references))references[type+'/'+doc.id]=doc;
   const d=details.request,v=d.values;
   const results=details.results.sort((a,b)=>Number(b.values.Attempt)-Number(a.values.Attempt));
@@ -121,13 +140,14 @@ async function detail(id){
     $('cancel-form').onsubmit=e=>{e.preventDefault();act('/requests/'+id+'/cancel',{version:d.version,reason:new FormData(e.target).get('Reason')},()=>detail(id));};
   };
   if($('amend'))$('amend').onclick=()=>requestForm(d);
-  $('history').onclick=async()=>{try{const history=await api(route('/history/Request/'+id));dialog('Request audit history','<ol class="audit">'+history.map(a=>'<li>'+escape(a.action)+' · '+escape(a.actor)+'<time>'+escape(date(a.at))+'</time><span>'+escape(a.before?.values.Status||'New')+' → '+escape(a.after?.values.Status||'Removed')+'</span></li>').join('')+'</ol>');}catch(e){$('dialog-error').textContent=e.message;}};
+  $('history').onclick=async()=>{try{const history=await api(route('/history/Request/'+id));if(epoch!==contextEpoch)return;dialog('Request audit history','<ol class="audit">'+history.map(a=>'<li>'+escape(a.action)+' · '+escape(a.actor)+'<time>'+escape(date(a.at))+'</time><span>'+escape(a.before?.values.Status||'New')+' → '+escape(a.after?.values.Status||'Removed')+'</span></li>').join('')+'</ol>');}catch(e){$('dialog-error').textContent=e.message;}};
   document.querySelectorAll('[data-evidence]').forEach(b=>b.onclick=()=>download('/evidence/'+b.dataset.evidence,'Evidence.bin').catch(e=>$('dialog-error').textContent=e.message));
 }
-async function act(path,body,after){
+async function act(path,body,after,epoch=contextEpoch){
+  if(epoch!==contextEpoch)return;
   const buttons=$('dialog').querySelectorAll('button');buttons.forEach(b=>b.disabled=true);
-  try{await api(route(path),body);await load();after?await after():$('dialog').close();}
-  catch(e){$('dialog-error').textContent=e.message;}
+  try{await api(route(path),body);if(epoch!==contextEpoch)return;await load();if(epoch!==contextEpoch)return;after?await after():$('dialog').close();}
+  catch(e){if(epoch===contextEpoch)$('dialog-error').textContent=e.message;}
   finally{buttons.forEach(b=>b.disabled=false);}
 }
 function input(key,label,type='text',value=''){
@@ -136,10 +156,11 @@ function input(key,label,type='text',value=''){
   return '<label'+(type==='textarea'?' class="wide"':'')+'>'+escape(label)+(type==='link'?'<input type="search" data-link-search="'+key+'" data-target="'+key+'" aria-label="Find '+escape(label)+'" placeholder="Search records…"><select name="'+key+'" required>'+options.map(d=>'<option value="'+d.id+'"'+(value===d.id?' selected':'')+'>'+escape(d.values.Name)+'</option>').join('')+'</select>':type==='textarea'?'<textarea name="'+key+'" required>'+escape(value)+'</textarea>':'<input name="'+key+'" type="'+type+'" value="'+escape(value)+'" required>')+'</label>';
 }
 function registerForm(){
+  const epoch=contextEpoch,type=register;
   const definition=data.forms.find(f=>f.name===register);
   dialog('Add '+register.toLowerCase(),'<p class="help">Saved records are immutable. Add a new revision when details change.</p><form id="edit-form"><div class="form-grid">'+LoomForms.html(definition,data.records)+'</div><button class="primary">Save '+register.toLowerCase()+'</button></form>');
   LoomForms.bindLinks($('edit-form'),async(type,search)=>(await api(route('/records/'+type+'?take=25&search='+encodeURIComponent(search)))).items,e=>$('dialog-error').textContent=e.message);
-  $('edit-form').onsubmit=async e=>{e.preventDefault();try{await act('/register/'+register,await LoomForms.read(e.target,definition));}catch(error){$('dialog-error').textContent=error.message;}};
+  $('edit-form').onsubmit=async e=>{e.preventDefault();try{await act('/register/'+type,await LoomForms.read(e.target,definition),null,epoch);}catch(error){$('dialog-error').textContent=error.message;}};
 }
 function requestForm(previous){
   const v=previous?.values||{};
@@ -154,6 +175,7 @@ function requestForm(previous){
   $('edit-form').onsubmit=e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target));body.Starts+=':00Z';body.Ends+=':00Z';if(previous)body.Amends=previous.id;act('/requests',body);};
 }
 function resultForm(d){
+  const epoch=contextEpoch;
   const procedure=record('Procedure',d.values.Procedure).values;
   dialog('Record test results','<p class="help">'+escape(procedure.Instructions)+'</p><p>Acceptance: '+escape(procedure.Lower)+' to '+escape(procedure.Upper)+' '+escape(procedure.Unit)+'</p><form id="result-form"><div class="form-grid">'+input('Value','Measured value (exact decimal)')+input('Unit','Measurement unit','text',procedure.Unit)+input('Notes','Acquisition notes','textarea')+
     '<label>Raw evidence file (1 MiB maximum)<input name="file" type="file" required></label><label>External dataset URI (optional)<input name="Dataset" type="text" placeholder="https://… or tsdb://…"></label></div><button class="primary">Save evidence and submit for review</button></form>');
@@ -162,7 +184,7 @@ function resultForm(d){
     try{
       if(!file.size||file.size>1048576)throw Error('Choose a file between 1 byte and 1 MiB.');
       const bytes=new Uint8Array(await file.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));
-      await act('/requests/'+d.id+'/results',{version:d.version,value:values.get('Value'),unit:values.get('Unit'),notes:values.get('Notes'),dataset:values.get('Dataset'),waveform:btoa(binary)},()=>detail(d.id));
+      await act('/requests/'+d.id+'/results',{version:d.version,value:values.get('Value'),unit:values.get('Unit'),notes:values.get('Notes'),dataset:values.get('Dataset'),waveform:btoa(binary)},()=>detail(d.id),epoch);
     }catch(error){$('dialog-error').textContent=error.message;}
   };
 }
@@ -173,10 +195,10 @@ function reviewForm(d,result){
   $('review-form').onsubmit=e=>{e.preventDefault();act('/requests/'+d.id+'/review',{version:d.version,approve:e.submitter.value==='approve',disposition:new FormData(e.target).get('Disposition')},()=>detail(d.id));};
 }
 $('login-form').onsubmit=async e=>{e.preventDefault();try{await api('/auth/login',Object.fromEntries(new FormData(e.target)));await session();}catch(error){notify(error);}};
-$('signout').onclick=async()=>{try{await api('/auth/logout',{});tenant='';data=null;references={};$('dialog').close();$('dialog-body').innerHTML='';$('content').innerHTML='';await session();}catch(e){notify(e);}};
-$('tenant').onchange=async()=>{tenant=$('tenant').value;$('dialog').close();try{await load();}catch(e){notify(e);}};
+$('signout').onclick=async()=>{clearContext();sessionSequence++;tenant='';user='';$('app').hidden=true;try{await api('/auth/logout',{});await session();}catch(e){notify(e);}};
+$('tenant').onchange=async()=>{tenant=$('tenant').value;clearContext();try{await load();}catch(e){notify(e);}};
 $('refresh').onclick=()=>load().catch(notify);$('search').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>searchPages().catch(notify),200);};$('filter').onchange=()=>pageRecords('Request',0).catch(notify);
-$('create-request').onclick=()=>requestForm();$('close-dialog').onclick=()=>$('dialog').close();
+$('create-request').onclick=()=>requestForm();$('close-dialog').onclick=()=>{detailSequence++;$('dialog').close();};
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{view=b.dataset.view;$('search').value='';if(data){render();searchPages().catch(notify);}});
 (async()=>{
   const config=await api('/facility-config');
