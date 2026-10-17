@@ -224,6 +224,8 @@ public sealed class FacilityApplication
             CheckCalibration(t.Get("Calibration",Value(d,"Calibration")),Value(d,"Instrument"),now,now);
             var procedure=t.Get("Procedure",Value(d,"Procedure"));var value=Number(input.Value);
             if(input.Unit!=Value(procedure,"Unit"))throw new LoomException(422,"Measurement unit must match the procedure.");
+            if(string.IsNullOrWhiteSpace(input.Waveform)||input.Waveform.Length>1398104)
+                throw new LoomException(422,"Attach base64 evidence between 1 byte and 1 MiB.");
             byte[] bytes;
             try{bytes=Convert.FromBase64String(input.Waveform);}catch(FormatException){throw new LoomException(422,"Evidence must be base64 encoded.");}
             if(bytes.Length==0||bytes.Length>1048576)throw new LoomException(422,"Attach between 1 byte and 1 MiB of evidence.");

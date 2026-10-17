@@ -208,6 +208,17 @@ public sealed class FacilityApplicationTests : IDisposable
         Assert.Equal(1,app.ProcessReleases(1));Assert.Equal(1,app.ProcessReleases(1));Assert.Equal(0,app.ProcessReleases(1));
     }
 
+    [Fact] public void InvalidEvidenceCannotAdvanceRequestOrCreateAuditEvidence()
+    {
+        var app=App();var request=Request(app);request=app.Start("north-operator","north",request.Id,request.Version);
+        var history=app.History("north-manager","north","Request",request.Id).Count;
+        foreach(var raw in new[]{null,""," ","not base64!",new string('A',1398105)})
+            Assert.Equal(422,Assert.Throws<LoomException>(()=>app.Record("north-operator","north",request.Id,Evidence(request) with{Waveform=raw!})).Status);
+        Assert.Empty(app.Overview("north-manager","north").Records["Result"]);
+        Assert.Equal(history,app.History("north-manager","north","Request",request.Id).Count);
+        Assert.Equal("Running",V(Request(app),"Status"));
+    }
+
     public void Dispose()=>Directory.Delete(root,true);
     private sealed class FixedClock(DateTimeOffset now):TimeProvider
     {public override DateTimeOffset GetUtcNow()=>now;}

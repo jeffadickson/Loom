@@ -19,3 +19,4 @@ actual changes and checks; final qualification is recorded below after execution
 | 11 | Verify stored digests before release and evidence download | 15 focused checks pass; corrected summary-versus-payload read and proved corrupted stored hashes fail closed. |
 | 12 | Replace whole-table evidence scans with scoped provider queries | Reviewed stable field IDs, two-row bounds, exact cardinality and preserved blob-free summaries. |
 | 13 | Bound release processing and honor cancellation between jobs | 16 focused checks pass, including two pending releases drained one per batch and cancellation before writes. |
+| 14 | Reject missing and oversized encoded evidence before allocation | Reviewed decode bound and rollback path; added null, empty, malformed and oversized input regression. |
