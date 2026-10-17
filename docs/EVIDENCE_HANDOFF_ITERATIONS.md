@@ -15,3 +15,4 @@ actual changes and checks; final qualification is recorded below after execution
 | 7 | Export approved release evidence through tenant authorization | 13 focused checks pass, including offline file verification, role denial, cross-tenant denial and identical exports after restart. |
 | 8 | Include bounded provenance snapshots and handoff instructions | Reviewed nine selected records, removed payload duplication, added exact-value and unrelated-record regression. |
 | 9 | Expose authenticated evidence ZIP download endpoint | Reviewed route identity resolution, fixed filename, no-store response and role enforcement at application boundary. |
+| 10 | Add evidence package download to released reports | JavaScript syntax checked; reused existing download handling and Manager/Reviewer report visibility. |

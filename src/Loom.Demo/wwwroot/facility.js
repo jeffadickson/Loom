@@ -46,7 +46,7 @@ function render(){
   $('create-request').hidden=data.role!=='Manager'||view!=='requests';
   $('filter-label').hidden=view!=='requests';
   $('page-title').textContent={requests:'Test requests',register:'Facility register',releases:'Reports & queue'}[view];
-  $('page-description').textContent={requests:'Follow each test from its reservation to released evidence.',register:'Immutable equipment, calibration, specimen and procedure records.',releases:'Inspect report generation and download approved release snapshots.'}[view];
+  $('page-description').textContent={requests:'Follow each test from its reservation to released evidence.',register:'Immutable equipment, calibration, specimen and procedure records.',releases:'Download approved reports or a portable package containing raw evidence, provenance and integrity checks.'}[view];
   if(view==='requests')renderRequests();else if(view==='register')renderRegister();else renderReleases();
 }
 function matches(d){const query=$('search').value.toLowerCase();return !query||JSON.stringify(d.values).toLowerCase().includes(query)||Object.entries(d.values).some(([key,value])=>data.records[key]&&name(key,value).toLowerCase().includes(query));}
@@ -79,9 +79,10 @@ function renderRegister(){
   if($('add-register'))$('add-register').onclick=()=>registerForm();
 }
 function renderReleases(){
-  $('content').innerHTML='<div class="section-head"><h2>Released reports</h2></div>'+(data.role==='Operator'?'<div class="panel empty">Released reports include project costs. Managers and reviewers can download them.</div>':table(['Report','Released','Evidence'],data.records.Release.filter(matches).map(d=>'<tr><td><strong>'+escape(d.values.Name)+'</strong><small class="hash">'+escape(d.values.Sha256)+'</small></td><td>'+escape(date(d.values.ReleasedAt))+'</td><td><button data-report="'+d.id+'">Download report</button></td></tr>')))+
+  $('content').innerHTML='<div class="section-head"><h2>Released reports</h2></div>'+(data.role==='Operator'?'<div class="panel empty">Released reports include project costs. Managers and reviewers can download them.</div>':table(['Report','Released','Evidence'],data.records.Release.filter(matches).map(d=>'<tr><td><strong>'+escape(d.values.Name)+'</strong><small class="hash">'+escape(d.values.Sha256)+'</small></td><td>'+escape(date(d.values.ReleasedAt))+'</td><td><button data-report="'+d.id+'">Download report</button> <button data-package="'+d.id+'">Download evidence package</button></td></tr>')))+
     (data.role==='Operator'?'':pager('Release'))+'<div class="section-head"><h2>Report queue</h2><span class="help">Refresh to see worker progress</span></div>'+table(['Request','Status','Attempts / action'],data.records.ReleaseJob.filter(matches).map(d=>'<tr><td>'+escape(d.values.Name)+(d.values.Error?'<small>'+escape(d.values.Error)+'</small>':'')+'</td><td>'+badge(d.values.Status)+'</td><td>'+escape(d.values.Attempts)+(data.role==='Manager'&&d.values.Status==='Failed'?' <button data-retry="'+d.id+'">Retry</button>':'')+'</td></tr>'))+pager('ReleaseJob');
   bindPages();
+  document.querySelectorAll('[data-package]').forEach(b=>b.onclick=()=>download('/releases/'+b.dataset.package+'/package','Test_Evidence.zip').catch(notify));
   document.querySelectorAll('[data-report]').forEach(b=>b.onclick=()=>download('/releases/'+b.dataset.report,'Test_Release.html').catch(notify));
   document.querySelectorAll('[data-retry]').forEach(b=>b.onclick=async()=>{try{const d=data.records.ReleaseJob.find(x=>x.id===b.dataset.retry);await api(route('/jobs/'+d.id+'/retry'),{version:d.version});await load();}catch(e){notify(e);}});
 }
