@@ -179,6 +179,17 @@ public sealed class FacilityApplicationTests : IDisposable
         Assert.Equal(bytes,app.ExportRelease("north-manager","north",release.Id));
     }
 
+    [Fact] public void CorruptStoredDigestsBlockDownloadAndExport()
+    {
+        var app=App();var release=Released(app);var result=Assert.Single(app.Overview("north-manager","north").Records["Result"]);
+        using var connection=new Microsoft.Data.Sqlite.SqliteConnection("Data Source="+Path.Combine(root,"north","documents.db"));connection.Open();
+        using var command=connection.CreateCommand();command.CommandText="UPDATE Result SET Sha256='corrupted'";command.ExecuteNonQuery();
+        Assert.Equal(409,Assert.Throws<LoomException>(()=>app.Evidence("north-reviewer","north",result.Id)).Status);
+        Assert.Equal(409,Assert.Throws<LoomException>(()=>app.ExportRelease("north-reviewer","north",release.Id)).Status);
+        command.CommandText="UPDATE Release SET Sha256='corrupted'";command.ExecuteNonQuery();
+        Assert.Equal(409,Assert.Throws<LoomException>(()=>app.ReleasedReport("north-reviewer","north",release.Id)).Status);
+    }
+
     public void Dispose()=>Directory.Delete(root,true);
     private sealed class FixedClock(DateTimeOffset now):TimeProvider
     {public override DateTimeOffset GetUtcNow()=>now;}

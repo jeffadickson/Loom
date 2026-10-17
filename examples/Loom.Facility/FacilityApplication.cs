@@ -291,6 +291,7 @@ public sealed class FacilityApplication
                     var request=t.Get("Request",Value(job,"Request"));var result=CurrentResult(t,request);
                     var review=All(t,"Review").Single(r=>Value(r,"Result")==result.Id&&Value(r,"Decision")=="Approved");
                     if(Value(request,"Status")!="ReleaseQueued")throw new InvalidOperationException("Request is not queued.");
+                    _ = VerifiedPayload(t.Get("Result",result.Id),"Waveform");
                     var at=clock.GetUtcNow().ToString("O");
                     var html=Report(t,tenant,request,result,review,at);
                     t.Create("Release",new(){["Name"]=Value(request,"Name")+" / release 1",["Request"]=request.Id,
@@ -305,7 +306,7 @@ public sealed class FacilityApplication
     }
     public event Action<string,string,Exception>? ReleaseFailed;
     public string ReleasedReport(string user,string tenant,string id)
-    {using var s=Open(user,tenant);Require(s,"Manager","Reviewer");return Encoding.UTF8.GetString(Convert.FromBase64String(Value(s.Get("Release",id),"Html")));}
+    {using var s=Open(user,tenant);Require(s,"Manager","Reviewer");return Encoding.UTF8.GetString(VerifiedPayload(s.Get("Release",id),"Html"));}
     /// <summary>Exports only the immutable report and selected approved attempt, in one authorized snapshot.</summary>
     public byte[] ExportRelease(string user,string tenant,string id)
     {
@@ -327,15 +328,15 @@ public sealed class FacilityApplication
                 releaseId=release.Id,records},Catalog.Json);
             return Loom.Core.Science.EvidencePackage.Create(new Dictionary<string,byte[]>
             {
-                ["report.html"]=Convert.FromBase64String(Value(release,"Html")),
-                ["evidence.bin"]=Convert.FromBase64String(Value(result,"Waveform")),
+                ["report.html"]=VerifiedPayload(release,"Html"),
+                ["evidence.bin"]=VerifiedPayload(result,"Waveform"),
                 ["provenance.json"]=provenance,
                 ["readme.txt"]=Encoding.UTF8.GetBytes("Loom Facility evidence package v1\nreport.html: released report\nevidence.bin: selected attempt raw bytes\nprovenance.json: record snapshots, exact decimal values and external dataset references\nmanifest.json: file lengths and SHA-256 digests\nVerify: dotnet Loom.Demo.dll --verify-evidence FILE.zip\nChecksums do not authenticate the author. External datasets are references only; they were not downloaded.\nContains project costs and potentially sensitive evidence. Share with authorized recipients only.\n")
             });
         });
     }
     public byte[] Evidence(string user,string tenant,string id)
-    {using var s=Open(user,tenant);return Convert.FromBase64String(Value(s.Get("Result",id),"Waveform"));}
+    {using var s=Open(user,tenant);return VerifiedPayload(s.Get("Result",id),"Waveform");}
     public IReadOnlyList<AuditEntry> History(string user,string tenant,string type,string id)
     {
         using var s=Open(user,tenant);
@@ -344,6 +345,15 @@ public sealed class FacilityApplication
         {if(d==null)return null;var copy=d.Copy();copy.Values.Remove("Waveform");copy.Values.Remove("Html");return copy;}
     }
     public void Backup(string tenant,string archive)=>workspace.Backup(tenant,archive);
+    private static byte[] VerifiedPayload(Document document,string field)
+    {
+        byte[] bytes;
+        try{bytes=Convert.FromBase64String(Value(document,field));}
+        catch(FormatException){throw new LoomException(409,"Stored evidence is invalid. Restore a verified backup.");}
+        if(Hash(bytes)!=Value(document,"Sha256"))
+            throw new LoomException(409,"Stored evidence integrity check failed. Restore a verified backup.");
+        return bytes;
+    }
     private static string Hash(byte[] bytes)=>Convert.ToHexString(SHA256.HashData(bytes));
     private static string Report(IApplicationSession s,string tenant,Document request,Document result,Document review,string at)
     {

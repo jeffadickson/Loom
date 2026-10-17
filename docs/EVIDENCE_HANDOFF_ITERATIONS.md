@@ -16,3 +16,4 @@ actual changes and checks; final qualification is recorded below after execution
 | 8 | Include bounded provenance snapshots and handoff instructions | Reviewed nine selected records, removed payload duplication, added exact-value and unrelated-record regression. |
 | 9 | Expose authenticated evidence ZIP download endpoint | Reviewed route identity resolution, fixed filename, no-store response and role enforcement at application boundary. |
 | 10 | Add evidence package download to released reports | JavaScript syntax checked; reused existing download handling and Manager/Reviewer report visibility. |
+| 11 | Verify stored digests before release and evidence download | 15 focused checks pass; corrected summary-versus-payload read and proved corrupted stored hashes fail closed. |
