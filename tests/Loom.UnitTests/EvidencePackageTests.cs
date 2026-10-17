@@ -20,4 +20,23 @@ public sealed class EvidencePackageTests
         Assert.Equal(1,manifest.RootElement.GetProperty("version").GetInt32());
         Assert.Equal(4,manifest.RootElement.GetProperty("files")[0].GetProperty("length").GetInt64());
     }
+    [Fact] public void VerificationRejectsTamperingMissingExtraAndTruncatedFiles()
+    {
+        var original=EvidencePackage.Create(new Dictionary<string,byte[]>{["raw.bin"]=Bytes("data")});
+        Assert.Equal("raw.bin",Assert.Single(EvidencePackage.Verify(original).Files).Path);
+        foreach(var action in new Action<ZipArchive>[] {
+            z=>{z.GetEntry("raw.bin")!.Delete();Write(z,"raw.bin",Bytes("evil"));},
+            z=>z.GetEntry("raw.bin")!.Delete(),z=>Write(z,"extra.bin",Bytes("extra")),
+            z=>Write(z,"raw.bin",Bytes("data")),z=>z.GetEntry("manifest.json")!.Delete()})
+            Assert.Throws<InvalidDataException>(()=>EvidencePackage.Verify(Edit(original,action)));
+        Assert.Throws<InvalidDataException>(()=>EvidencePackage.Verify(original[..30]));
+    }
+    private static byte[] Edit(byte[] bytes,Action<ZipArchive> edit)
+    {
+        using var stream=new MemoryStream();stream.Write(bytes);
+        using(var archive=new ZipArchive(stream,ZipArchiveMode.Update,true))edit(archive);
+        return stream.ToArray();
+    }
+    private static void Write(ZipArchive zip,string name,byte[] bytes)
+    {using var stream=zip.CreateEntry(name).Open();stream.Write(bytes);}
 }

@@ -44,6 +44,52 @@ public static class EvidencePackage
         if(output.Length>MaximumBytes)throw new InvalidDataException("Evidence archive exceeds the size limit.");
         return output.ToArray();
     }
+    /// <summary>Checks every listed file and rejects missing or extra entries, without extraction.</summary>
+    public static EvidenceManifest Verify(byte[] bytes)
+    {
+        ArgumentNullException.ThrowIfNull(bytes);
+        if(bytes.Length>MaximumBytes)throw new InvalidDataException("Evidence archive exceeds the size limit.");
+        using var input=new MemoryStream(bytes,false);
+        using var archive=new ZipArchive(input,ZipArchiveMode.Read);
+        if(archive.Entries.Count is <2 or >MaximumFiles+1)throw new InvalidDataException("Invalid evidence file count.");
+        var entries=new Dictionary<string,ZipArchiveEntry>(StringComparer.Ordinal);
+        foreach(var entry in archive.Entries)
+            if(!entries.TryAdd(entry.FullName,entry))throw new InvalidDataException("Duplicate evidence entry.");
+        if(!entries.Remove(ManifestPath,out var inventory))throw new InvalidDataException("Evidence manifest is missing.");
+        EvidenceManifest manifest;
+        try{manifest=JsonSerializer.Deserialize<EvidenceManifest>(Read(inventory,ManifestLimit),Json)
+            ??throw new InvalidDataException("Invalid evidence manifest.");}
+        catch(JsonException){throw new InvalidDataException("Invalid evidence manifest.");}
+        if(manifest.Version!=1||manifest.Files==null||manifest.Files.Length!=entries.Count)
+            throw new InvalidDataException("Unsupported or incomplete evidence manifest.");
+        long total=0;
+        foreach(var file in manifest.Files)
+        {
+            if(file==null)throw new InvalidDataException("Invalid evidence file.");
+            ValidatePath(file.Path);
+            if(file.Length<0||file.Length>MaximumFileBytes||(total+=file.Length)>MaximumBytes)
+                throw new InvalidDataException("Evidence size limit exceeded.");
+            if(!entries.Remove(file.Path,out var entry)||entry.Length!=file.Length)
+                throw new InvalidDataException("Evidence inventory does not match archive.");
+            if(Hash(Read(entry,MaximumFileBytes))!=file.Sha256)
+                throw new InvalidDataException("Evidence digest mismatch.");
+        }
+        if(entries.Count!=0)throw new InvalidDataException("Unlisted evidence file.");
+        return manifest;
+    }
+    private static byte[] Read(ZipArchiveEntry entry,int limit)
+    {
+        if(entry.Length<0||entry.Length>limit)throw new InvalidDataException("Evidence size limit exceeded.");
+        using var stream=entry.Open();using var output=new MemoryStream();
+        var buffer=new byte[8192];int count;
+        while((count=stream.Read(buffer))!=0)
+        {
+            if(output.Length+count>limit)throw new InvalidDataException("Evidence size limit exceeded.");
+            output.Write(buffer,0,count);
+        }
+        if(output.Length!=entry.Length)throw new InvalidDataException("Evidence length mismatch.");
+        return output.ToArray();
+    }
     private static void Write(ZipArchive archive,string path,byte[] bytes)
     {
         var entry=archive.CreateEntry(path,CompressionLevel.Optimal);

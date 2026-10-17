@@ -8,3 +8,4 @@ actual changes and checks; final qualification is recorded below after execution
 | --- | --- | --- |
 | 1 | Define portable scientific evidence acceptance criteria | Reviewed existing workflow and issue 35; no database schema change required. |
 | 2 | Add deterministic bounded evidence archive writer | Built and passed 8 focused checks, including reproducible inventory and existing Facility workflow. |
+| 3 | Verify complete evidence inventory and file digests | 9 focused checks pass, including altered, missing, duplicate, extra and truncated ZIP entries. |
