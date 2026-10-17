@@ -315,3 +315,11 @@ uses an exclusive destination lock and no-overwrite rename; source files remain 
 lock fails closed pending operator review. The tenant host opens validated startup
 snapshots, and CLI operations execute before web/database/worker initialization. Recovery coverage uses
 a copied rotated ring to decrypt deliveries persisted by the prior host.
+
+### Portable evidence boundary
+
+`Loom.Core.Science.EvidencePackage` owns a bounded, versioned ZIP inventory and offline digest
+verification. It has no tenant, database, web, or Facility dependency. The Facility application
+owns approval/reference checks, role-scoped snapshot selection and stored payload verification;
+the HTTP host only resolves identity and serves a non-cacheable ZIP attachment. Export uses existing
+immutable release/result records, requiring no schema migration. See `EVIDENCE_PACKAGES.md`.

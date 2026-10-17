@@ -24,3 +24,4 @@ actual changes and checks; final qualification is recorded below after execution
 | 16 | Discard stale facility responses across account and tenant changes | Reviewed request generations for load, paging, detail, download and delayed file submission; JavaScript syntax passes. |
 | 17 | Exercise package downloads search and delayed account responses in Chromium | Real browser workflow passes, including off-page search, ZIP download, mobile layout and delayed North response after South login. |
 | 18 | Independently verify exported archives and offline CLI after restart | Python ZIP/hash checks and real CLI success, corruption, missing-file and usage failures pass after persisted worker restart. |
+| 19 | Document portable evidence format and update HTML introduction | Regenerated standalone introduction; documented API, commands, limits, permissions and integrity limitations. |

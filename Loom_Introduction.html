@@ -44,7 +44,11 @@ operator and reviewer accounts and persists its facility records in SQLite.</p>
 <p>Reservations, review decisions and report publication use atomic document operations.
 Queued reports resume after restart; amendments preserve the original released evidence.
 Lists use database-side field selection and paging, and register forms come directly from
-permission-filtered schema metadata. Evidence blobs are loaded only when requested.</p></section>
+permission-filtered schema metadata. Evidence blobs are loaded only when requested.</p><p>Managers and reviewers can download a portable evidence package containing the released report,
+raw measurement bytes and provenance snapshots. An offline <code>--verify-evidence FILE.zip</code>
+command checks the complete file inventory and SHA-256 digests without starting the server.
+Checksums detect changes; they do not authenticate the author. Search covers all record pages,
+and report workers use bounded batches.</p></section>
 </main><footer>Loom / An evolving framework · Example data is synthetic.</footer><script>window.LOOM_INTRO_STANDALONE=true;
 'use strict';
 (async()=>{

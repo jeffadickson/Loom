@@ -166,3 +166,17 @@ Start, Cancel and QueueRelease now use Core's ApplicationWorkflow. Calibration/t
 assignment remain C# guards; cancellation reason and enqueue are atomic effects. Report processing
 and manager retry use TransactionalJobs, preserving the existing ReleaseJob schema and restart behavior.
 Record/Review retain their specialized atomic domain actions. See APPLICATION_WORKFLOWS_JOBS.md.
+
+## Portable result handoff
+
+Managers and reviewers can choose **Download evidence package** beside each released report.
+The ZIP preserves the released HTML, the approved attempt's raw bytes and nine provenance
+snapshots, with a versioned SHA-256 inventory. Run `dotnet Loom.Demo.dll --verify-evidence FILE.zip`
+without starting a server to check it. See [Evidence packages](EVIDENCE_PACKAGES.md) for the
+format, limits and integrity-versus-authenticity boundary.
+
+Search now queries the provider across all pages, matching stored scalar values. It does not
+search the contents of attached files or automatically join linked-record display names.
+The report worker processes at most 25 pending jobs per tenant per pass by default (configurable
+through the application method, 1–100); cancellation is checked between transactions. Result and
+approved-review selection use filtered queries instead of scanning unrelated evidence.
