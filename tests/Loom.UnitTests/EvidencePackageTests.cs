@@ -44,6 +44,16 @@ public sealed class EvidencePackageTests
         Assert.Throws<InvalidDataException>(()=>EvidencePackage.Verify(Edit(original,z=>{
             z.GetEntry("raw.bin")!.Delete();Write(z,"raw.bin",new byte[EvidencePackage.MaximumFileBytes+1]);})));
     }
+    [Fact] public void ManifestRequiresExactVersionedUnambiguousShape()
+    {
+        var original=EvidencePackage.Create(new Dictionary<string,byte[]>{["raw.bin"]=[1]});
+        foreach(var json in new[]{"null","{}","{broken", "{\"version\":1,\"version\":1,\"files\":[]}",
+            "{\"version\":2,\"files\":[]}","{\"version\":1,\"files\":null}",
+            "{\"version\":1,\"files\":[null]}","{\"version\":1,\"files\":[{}]}",
+            "{\"version\":1,\"files\":[],\"extra\":0}"})
+            Assert.Throws<InvalidDataException>(()=>EvidencePackage.Verify(Edit(original,z=>{
+                z.GetEntry("manifest.json")!.Delete();Write(z,"manifest.json",Bytes(json));})));
+    }
     private static byte[] Edit(byte[] bytes,Action<ZipArchive> edit)
     {
         using var stream=new MemoryStream();stream.Write(bytes);

@@ -57,8 +57,17 @@ public static class EvidencePackage
             if(!entries.TryAdd(entry.FullName,entry))throw new InvalidDataException("Duplicate evidence entry.");
         if(!entries.Remove(ManifestPath,out var inventory))throw new InvalidDataException("Evidence manifest is missing.");
         EvidenceManifest manifest;
-        try{manifest=JsonSerializer.Deserialize<EvidenceManifest>(Read(inventory,ManifestLimit),Json)
-            ??throw new InvalidDataException("Invalid evidence manifest.");}
+        try
+        {
+            var json=Read(inventory,ManifestLimit);
+            using var document=JsonDocument.Parse(json,new JsonDocumentOptions{MaxDepth=8});
+            ExactProperties(document.RootElement,"version","files");
+            if(document.RootElement.GetProperty("files").ValueKind!=JsonValueKind.Array)
+                throw new InvalidDataException("Invalid evidence inventory.");
+            foreach(var file in document.RootElement.GetProperty("files").EnumerateArray())
+                ExactProperties(file,"path","length","sha256");
+            manifest=JsonSerializer.Deserialize<EvidenceManifest>(json,Json)!;
+        }
         catch(JsonException){throw new InvalidDataException("Invalid evidence manifest.");}
         if(manifest.Version!=1||manifest.Files==null||manifest.Files.Length!=entries.Count)
             throw new InvalidDataException("Unsupported or incomplete evidence manifest.");
@@ -67,6 +76,8 @@ public static class EvidencePackage
         {
             if(file==null)throw new InvalidDataException("Invalid evidence file.");
             ValidatePath(file.Path);
+            if(file.Sha256==null||file.Sha256.Length!=64||file.Sha256.Any(c=>!(c is >= '0' and <= '9' or >= 'A' and <= 'F')))
+                throw new InvalidDataException("Invalid evidence digest.");
             if(file.Length<0||file.Length>MaximumFileBytes||(total+=file.Length)>MaximumBytes)
                 throw new InvalidDataException("Evidence size limit exceeded.");
             if(!entries.Remove(file.Path,out var entry)||entry.Length!=file.Length)
@@ -76,6 +87,13 @@ public static class EvidencePackage
         }
         if(entries.Count!=0)throw new InvalidDataException("Unlisted evidence file.");
         return manifest;
+    }
+    private static void ExactProperties(JsonElement value,params string[] names)
+    {
+        if(value.ValueKind!=JsonValueKind.Object)throw new InvalidDataException("Invalid evidence manifest object.");
+        var properties=value.EnumerateObject().Select(p=>p.Name).ToArray();
+        if(properties.Length!=names.Length||!properties.ToHashSet(StringComparer.Ordinal).SetEquals(names))
+            throw new InvalidDataException("Invalid or duplicate evidence manifest property.");
     }
     private static byte[] Read(ZipArchiveEntry entry,int limit)
     {
