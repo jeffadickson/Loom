@@ -384,3 +384,20 @@ Implemented initial scope and remaining scale/integration goals are in FACILITY_
   requires an explicit coordinated host configuration switch. Do not implement automatic key deletion.
 - **KEY-04:** Verify encrypted delivery recovery across rotation/restart and a copied recovery ring;
   test malformed files, duplicate identifiers, concurrent publication and secret-free diagnostics.
+
+## Portable scientific evidence handoff
+
+- **EVD-01**: Export an approved Facility release as a versioned ZIP containing the immutable
+  report, the selected attempt's raw evidence and JSON provenance. Export requires the same
+  tenant membership and Manager/Reviewer authority as report download.
+- **EVD-02**: A reusable Core package format records exact byte lengths and SHA-256 hashes;
+  offline verification checks the complete inventory without extracting files or fetching URIs.
+  Checksums detect alteration relative to the manifest; they do not authenticate its author.
+- **EVD-03**: Verification rejects unsafe/duplicate paths, unlisted or missing entries, unsupported
+  versions, malformed manifests and oversized inputs. Memory use is bounded by explicit limits.
+- **EVD-04**: Export verifies stored evidence/report hashes first, preserves decimal strings and
+  external dataset references, and never includes another request's evidence or audit history.
+- **EVD-05**: Browser download and offline CLI verification work after server restart. Packages
+  remain readable without a running Loom database. Existing HTML download remains available.
+- **EVD-06**: Facility lookups, release-worker batches and search operate through bounded provider
+  queries. Browser context changes discard stale responses and clear previous records.
