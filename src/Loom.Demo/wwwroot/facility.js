@@ -23,7 +23,7 @@ function notify(e){$('notice').textContent=e.message||e;}
 async function load(){
   if(!tenant)return;
   [data,operators]=await Promise.all([api(route('/overview')),api(route('/operators'))]);
-  offsets={};pageTotals={...data.totals};references={};$('filter').value='';
+  offsets={};pageTotals={...data.totals};references={};$('filter').value='';$('search').value='';
   $('identity').textContent=user+' / '+data.role;
   $('notice').textContent='';render();
 }
@@ -49,7 +49,6 @@ function render(){
   $('page-description').textContent={requests:'Follow each test from its reservation to released evidence.',register:'Immutable equipment, calibration, specimen and procedure records.',releases:'Download approved reports or a portable package containing raw evidence, provenance and integrity checks.'}[view];
   if(view==='requests')renderRequests();else if(view==='register')renderRegister();else renderReleases();
 }
-function matches(d){const query=$('search').value.toLowerCase();return !query||JSON.stringify(d.values).toLowerCase().includes(query)||Object.entries(d.values).some(([key,value])=>data.records[key]&&name(key,value).toLowerCase().includes(query));}
 function table(head,rows){return '<div class="table-wrap"><table><thead><tr>'+head.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+rows.join('')+'</tbody></table>'+(!rows.length?'<p class="empty">No matching records.</p>':'')+'</div>';}
 function pager(type){
  const start=offsets[type]||0,total=pageTotals[type]??data.totals[type]??0,size=25;
@@ -62,25 +61,31 @@ function bindPages(){
 }
 async function pageRecords(type,skip=0){
  const status=type==='Request'&&$('filter').value?'&status='+encodeURIComponent($('filter').value):'';
- const page=await api(route('/records/'+type+'?skip='+skip+'&take=25'+status));
+ const page=await api(route('/records/'+type+'?skip='+skip+'&take=25'+status+'&search='+encodeURIComponent($('search').value)));
  data.records[type]=page.items;offsets[type]=skip;pageTotals[type]=page.total;render();
 }
+async function searchPages(){
+  if(!data)return;
+  const types=view==='requests'?['Request']:view==='register'?[register]:data.role==='Operator'?['ReleaseJob']:['Release','ReleaseJob'];
+  await Promise.all(types.map(type=>pageRecords(type,0)));
+}
+let searchTimer;
 function renderRequests(){
-  const rows=data.records.Request.filter(matches).filter(d=>!$('filter').value||d.values.Status===$('filter').value);
+  const rows=data.records.Request.filter(d=>!$('filter').value||d.values.Status===$('filter').value);
   $('content').innerHTML=table(['Test / specimen','Instrument','Reservation','Status'],rows.map(d=>'<tr><td><button class="row-button" data-request="'+d.id+'">'+escape(d.values.Name)+'</button><small>'+escape(name('Specimen',d.values.Specimen))+'</small></td><td>'+escape(name('Instrument',d.values.Instrument))+'<small>'+escape(d.values.Operator)+'</small></td><td>'+escape(date(d.values.Starts))+'<small>Until '+escape(date(d.values.Ends))+'</small></td><td>'+badge(d.values.Status)+'</td></tr>'))+pager('Request');
   bindPages();
   document.querySelectorAll('[data-request]').forEach(b=>b.onclick=()=>detail(b.dataset.request));
 }
 function renderRegister(){
   $('content').innerHTML='<div class="register-tabs">'+data.forms.map(f=>f.name).map(type=>'<button data-register="'+type+'" class="'+(type===register?'selected':'')+'">'+type+'</button>').join('')+'</div><div class="section-head"><h2>'+register+' records</h2>'+(data.forms.find(f=>f.name===register)?.canCreate?'<button id="add-register">Add '+register.toLowerCase()+'</button>':'')+'</div>'+
-    table(['Record','Details','Created'],data.records[register].filter(matches).map(d=>'<tr><td><strong>'+escape(d.values.Name)+'</strong><small>'+escape(d.id.slice(0,12))+'</small></td><td>'+Object.entries(d.values).filter(([k])=>k!=='Name').map(([k,v])=>'<small>'+escape(k)+': '+escape(data.records[k]?name(k,v):v)+'</small>').join('')+'</td><td>'+escape(date(d.createdAt))+'</td></tr>'))+pager(register);
+    table(['Record','Details','Created'],data.records[register].map(d=>'<tr><td><strong>'+escape(d.values.Name)+'</strong><small>'+escape(d.id.slice(0,12))+'</small></td><td>'+Object.entries(d.values).filter(([k])=>k!=='Name').map(([k,v])=>'<small>'+escape(k)+': '+escape(data.records[k]?name(k,v):v)+'</small>').join('')+'</td><td>'+escape(date(d.createdAt))+'</td></tr>'))+pager(register);
   bindPages();
-  document.querySelectorAll('[data-register]').forEach(b=>b.onclick=()=>{register=b.dataset.register;renderRegister();});
+  document.querySelectorAll('[data-register]').forEach(b=>b.onclick=()=>{register=b.dataset.register;renderRegister();searchPages().catch(notify);});
   if($('add-register'))$('add-register').onclick=()=>registerForm();
 }
 function renderReleases(){
-  $('content').innerHTML='<div class="section-head"><h2>Released reports</h2></div>'+(data.role==='Operator'?'<div class="panel empty">Released reports include project costs. Managers and reviewers can download them.</div>':table(['Report','Released','Evidence'],data.records.Release.filter(matches).map(d=>'<tr><td><strong>'+escape(d.values.Name)+'</strong><small class="hash">'+escape(d.values.Sha256)+'</small></td><td>'+escape(date(d.values.ReleasedAt))+'</td><td><button data-report="'+d.id+'">Download report</button> <button data-package="'+d.id+'">Download evidence package</button></td></tr>')))+
-    (data.role==='Operator'?'':pager('Release'))+'<div class="section-head"><h2>Report queue</h2><span class="help">Refresh to see worker progress</span></div>'+table(['Request','Status','Attempts / action'],data.records.ReleaseJob.filter(matches).map(d=>'<tr><td>'+escape(d.values.Name)+(d.values.Error?'<small>'+escape(d.values.Error)+'</small>':'')+'</td><td>'+badge(d.values.Status)+'</td><td>'+escape(d.values.Attempts)+(data.role==='Manager'&&d.values.Status==='Failed'?' <button data-retry="'+d.id+'">Retry</button>':'')+'</td></tr>'))+pager('ReleaseJob');
+  $('content').innerHTML='<div class="section-head"><h2>Released reports</h2></div>'+(data.role==='Operator'?'<div class="panel empty">Released reports include project costs. Managers and reviewers can download them.</div>':table(['Report','Released','Evidence'],data.records.Release.map(d=>'<tr><td><strong>'+escape(d.values.Name)+'</strong><small class="hash">'+escape(d.values.Sha256)+'</small></td><td>'+escape(date(d.values.ReleasedAt))+'</td><td><button data-report="'+d.id+'">Download report</button> <button data-package="'+d.id+'">Download evidence package</button></td></tr>')))+
+    (data.role==='Operator'?'':pager('Release'))+'<div class="section-head"><h2>Report queue</h2><span class="help">Refresh to see worker progress</span></div>'+table(['Request','Status','Attempts / action'],data.records.ReleaseJob.map(d=>'<tr><td>'+escape(d.values.Name)+(d.values.Error?'<small>'+escape(d.values.Error)+'</small>':'')+'</td><td>'+badge(d.values.Status)+'</td><td>'+escape(d.values.Attempts)+(data.role==='Manager'&&d.values.Status==='Failed'?' <button data-retry="'+d.id+'">Retry</button>':'')+'</td></tr>'))+pager('ReleaseJob');
   bindPages();
   document.querySelectorAll('[data-package]').forEach(b=>b.onclick=()=>download('/releases/'+b.dataset.package+'/package','Test_Evidence.zip').catch(notify));
   document.querySelectorAll('[data-report]').forEach(b=>b.onclick=()=>download('/releases/'+b.dataset.report,'Test_Release.html').catch(notify));
@@ -170,9 +175,9 @@ function reviewForm(d,result){
 $('login-form').onsubmit=async e=>{e.preventDefault();try{await api('/auth/login',Object.fromEntries(new FormData(e.target)));await session();}catch(error){notify(error);}};
 $('signout').onclick=async()=>{try{await api('/auth/logout',{});tenant='';data=null;references={};$('dialog').close();$('dialog-body').innerHTML='';$('content').innerHTML='';await session();}catch(e){notify(e);}};
 $('tenant').onchange=async()=>{tenant=$('tenant').value;$('dialog').close();try{await load();}catch(e){notify(e);}};
-$('refresh').onclick=()=>load().catch(notify);$('search').oninput=()=>data&&render();$('filter').onchange=()=>pageRecords('Request',0).catch(notify);
+$('refresh').onclick=()=>load().catch(notify);$('search').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>searchPages().catch(notify),200);};$('filter').onchange=()=>pageRecords('Request',0).catch(notify);
 $('create-request').onclick=()=>requestForm();$('close-dialog').onclick=()=>$('dialog').close();
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{view=b.dataset.view;$('search').value='';if(data)render();});
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{view=b.dataset.view;$('search').value='';if(data){render();searchPages().catch(notify);}});
 (async()=>{
   const config=await api('/facility-config');
   if(!config.enabled){notify('Facility Operations is not enabled. Start the host with --facility-demo, or configure Facility:Enabled and memberships.');return;}

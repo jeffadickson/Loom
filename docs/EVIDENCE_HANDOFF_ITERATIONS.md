@@ -20,3 +20,4 @@ actual changes and checks; final qualification is recorded below after execution
 | 12 | Replace whole-table evidence scans with scoped provider queries | Reviewed stable field IDs, two-row bounds, exact cardinality and preserved blob-free summaries. |
 | 13 | Bound release processing and honor cancellation between jobs | 16 focused checks pass, including two pending releases drained one per batch and cancellation before writes. |
 | 14 | Reject missing and oversized encoded evidence before allocation | Reviewed decode bound and rollback path; added null, empty, malformed and oversized input regression. |
+| 15 | Search all facility records through paged provider queries | JavaScript syntax checked; search resets page offsets and removes misleading current-page-only filtering. |
