@@ -14,6 +14,21 @@ using Npgsql;
 using Microsoft.Data.SqlClient;
 using Loom.Demo;
 
+// Portable evidence verification is independent of configuration and database availability.
+if(args.Length>0&&args[0]=="--verify-evidence")
+{
+    try
+    {
+        if(args.Length!=2)throw new ArgumentException("Use --verify-evidence FILE.zip.");
+        var manifest=Loom.Core.Science.EvidencePackage.VerifyFile(args[1]);
+        Console.WriteLine($"Evidence integrity verified: version {manifest.Version}, {manifest.Files.Length} files, {manifest.Files.Sum(f=>f.Length)} bytes.");
+        Console.WriteLine("Checksums do not authenticate the author. No files were extracted.");
+    }
+    catch(Exception error) when(error is IOException or UnauthorizedAccessException or ArgumentException)
+    {Console.Error.WriteLine("Evidence verification failed: "+error.Message);Environment.ExitCode=1;}
+    return;
+}
+
 // Offline key operations run before authentication, databases or background workers start.
 if(args.Length>0&&args[0].StartsWith("--jobs-key-",StringComparison.Ordinal))
 {

@@ -88,6 +88,15 @@ public static class EvidencePackage
         if(entries.Count!=0)throw new InvalidDataException("Unlisted evidence file.");
         return manifest;
     }
+    /// <summary>Verifies a bounded local file without starting a host or writing extracted content.</summary>
+    public static EvidenceManifest VerifyFile(string path)
+    {
+        using var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read);
+        if(stream.Length>MaximumBytes)throw new InvalidDataException("Evidence archive exceeds the size limit.");
+        var bytes=new byte[(int)stream.Length];stream.ReadExactly(bytes);
+        if(stream.ReadByte()!=-1)throw new InvalidDataException("Evidence archive changed while reading.");
+        return Verify(bytes);
+    }
     private static void ExactProperties(JsonElement value,params string[] names)
     {
         if(value.ValueKind!=JsonValueKind.Object)throw new InvalidDataException("Invalid evidence manifest object.");

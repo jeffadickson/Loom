@@ -54,6 +54,19 @@ public sealed class EvidencePackageTests
             Assert.Throws<InvalidDataException>(()=>EvidencePackage.Verify(Edit(original,z=>{
                 z.GetEntry("manifest.json")!.Delete();Write(z,"manifest.json",Bytes(json));})));
     }
+    [Fact] public void OfflineFileVerificationDoesNotExtractFiles()
+    {
+        var root=Path.Combine(Path.GetTempPath(),"loom-evidence-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
+        try
+        {
+            var path=Path.Combine(root,"release.zip");
+            File.WriteAllBytes(path,EvidencePackage.Create(new Dictionary<string,byte[]>{["raw.bin"]=[1,2,3]}));
+            Assert.Single(EvidencePackage.VerifyFile(path).Files);Assert.Single(Directory.GetFiles(root));
+            using(var file=File.OpenWrite(path))file.SetLength(EvidencePackage.MaximumBytes+1);
+            Assert.Throws<InvalidDataException>(()=>EvidencePackage.VerifyFile(path));
+        }
+        finally{Directory.Delete(root,true);}
+    }
     private static byte[] Edit(byte[] bytes,Action<ZipArchive> edit)
     {
         using var stream=new MemoryStream();stream.Write(bytes);

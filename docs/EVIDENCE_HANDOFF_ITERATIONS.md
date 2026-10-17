@@ -11,3 +11,4 @@ actual changes and checks; final qualification is recorded below after execution
 | 3 | Verify complete evidence inventory and file digests | 9 focused checks pass, including altered, missing, duplicate, extra and truncated ZIP entries. |
 | 4 | Reject nonportable paths and oversized evidence inputs | 10 focused checks pass; path traversal, reserved device names, count and byte limits exercised. |
 | 5 | Require strict manifest properties and version semantics | 11 focused checks pass, including malformed, null, unknown and duplicate JSON properties. |
+| 6 | Add standalone offline evidence verification command | Reviewed pre-host dispatch and bounded file reads; added file-verifier regression for next cumulative run. |
