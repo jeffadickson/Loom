@@ -260,8 +260,16 @@ public sealed class FacilityApplication
             return Change(t,d,input.Approve?"Approved":"ChangesRequested");
         });
     }
-    private static Document CurrentResult(IApplicationSession s,Document request)=>All(s,"Result")
-        .Single(d=>Value(d,"Request")==request.Id&&Value(d,"Attempt")==Value(request,"Attempt"));
+    private static Document UniqueSummary(IApplicationSession s,string type,params (string Field,JsonNode Value)[] values)
+    {
+        var schema=FacilityModel.Catalog.Get(type);
+        var filters=values.Select(v=>new FieldFilter(schema.Fields.Single(f=>f.Name==v.Field).Id!,FilterOperator.Equal,v.Value)).ToArray();
+        var page=SummaryPage(s,type,take:2,filters:filters);
+        if(page.Total!=1)throw new LoomException(409,"Expected exactly one matching evidence record.");
+        return page.Items[0];
+    }
+    private static Document CurrentResult(IApplicationSession s,Document request)=>UniqueSummary(s,"Result",
+        ("Request",JsonValue.Create(request.Id)!),("Attempt",request.Values["Attempt"]!.DeepClone()));
     public Document QueueRelease(string user,string tenant,string id,int version)
     {
         using var s=Open(user,tenant);Require(s,"Manager");
@@ -289,7 +297,7 @@ public sealed class FacilityApplication
                 var outcome=new TransactionalJobs().Run(s,candidate,(t,job)=>
                 {
                     var request=t.Get("Request",Value(job,"Request"));var result=CurrentResult(t,request);
-                    var review=All(t,"Review").Single(r=>Value(r,"Result")==result.Id&&Value(r,"Decision")=="Approved");
+                    var review=UniqueSummary(t,"Review",("Result",JsonValue.Create(result.Id)!),("Decision",JsonValue.Create("Approved")!));
                     if(Value(request,"Status")!="ReleaseQueued")throw new InvalidOperationException("Request is not queued.");
                     _ = VerifiedPayload(t.Get("Result",result.Id),"Waveform");
                     var at=clock.GetUtcNow().ToString("O");

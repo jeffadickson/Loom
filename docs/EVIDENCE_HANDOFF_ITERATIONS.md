@@ -17,3 +17,4 @@ actual changes and checks; final qualification is recorded below after execution
 | 9 | Expose authenticated evidence ZIP download endpoint | Reviewed route identity resolution, fixed filename, no-store response and role enforcement at application boundary. |
 | 10 | Add evidence package download to released reports | JavaScript syntax checked; reused existing download handling and Manager/Reviewer report visibility. |
 | 11 | Verify stored digests before release and evidence download | 15 focused checks pass; corrected summary-versus-payload read and proved corrupted stored hashes fail closed. |
+| 12 | Replace whole-table evidence scans with scoped provider queries | Reviewed stable field IDs, two-row bounds, exact cardinality and preserved blob-free summaries. |
