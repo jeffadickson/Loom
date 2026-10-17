@@ -67,6 +67,28 @@ public sealed class EvidencePackageTests
         }
         finally{Directory.Delete(root,true);}
     }
+    [Fact] public void VerifierRejectsUnsafeInventoryPathsEvenWhenContentHashesMatch()
+    {
+        var original=EvidencePackage.Create(new Dictionary<string,byte[]>{["raw.bin"]=[1]});
+        foreach(var name in new[]{"../escape","folder/raw.bin","con.txt","RAW.bin","raw."})
+        {
+            var changed=Edit(original,z=>
+            {
+                System.Text.Json.Nodes.JsonNode manifest;
+                using(var stream=z.GetEntry("manifest.json")!.Open())manifest=System.Text.Json.Nodes.JsonNode.Parse(stream)!;
+                manifest["files"]![0]!["path"]=name;
+                z.GetEntry("manifest.json")!.Delete();Write(z,"manifest.json",Bytes(manifest.ToJsonString()));
+                z.GetEntry("raw.bin")!.Delete();Write(z,name,[1]);
+            });
+            Assert.Throws<InvalidDataException>(()=>EvidencePackage.Verify(changed));
+        }
+    }
+    [Fact] public void OversizedManifestIsRejectedBeforeJsonParsing()
+    {
+        var original=EvidencePackage.Create(new Dictionary<string,byte[]>{["raw.bin"]=[1]});
+        var changed=Edit(original,z=>{z.GetEntry("manifest.json")!.Delete();Write(z,"manifest.json",new byte[65537]);});
+        Assert.Throws<InvalidDataException>(()=>EvidencePackage.Verify(changed));
+    }
     private static byte[] Edit(byte[] bytes,Action<ZipArchive> edit)
     {
         using var stream=new MemoryStream();stream.Write(bytes);

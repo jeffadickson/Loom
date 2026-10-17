@@ -25,3 +25,20 @@ actual changes and checks; final qualification is recorded below after execution
 | 17 | Exercise package downloads search and delayed account responses in Chromium | Real browser workflow passes, including off-page search, ZIP download, mobile layout and delayed North response after South login. |
 | 18 | Independently verify exported archives and offline CLI after restart | Python ZIP/hash checks and real CLI success, corruption, missing-file and usage failures pass after persisted worker restart. |
 | 19 | Document portable evidence format and update HTML introduction | Regenerated standalone introduction; documented API, commands, limits, permissions and integrity limitations. |
+| 20 | Complete adversarial review and qualify the scientific handoff batch | Full locked build, 491 framework checks, 19 focused checks, real Facility recovery browser/CLI and live/offline introduction checks pass. |
+
+## Local qualification
+
+- Locked full solution build: passed with .NET SDK 8.0.426.
+- Existing executable framework suite: **491 checks passed**.
+- Evidence/Facility Fact methods: **19 passed**, executed by an isolated local reflection runner;
+  the ordinary xUnit runner remains the CI gate. No local Testcontainers claim is made.
+- Real Facility browser flow, queued-work restart, ZIP download, independent Python hashes,
+  offline CLI success and rejection cases: passed.
+- Live/offline HTML introduction and laboratory browser flows: passed.
+- Final review added strict verification of malicious inventory paths and oversized manifests,
+  aggregate-size enforcement before copying payloads, friendly CLI corruption errors, and
+  suppression of an audit-history response after its dialog closes.
+
+No production deployment, load qualification, signing, remote dataset capture, large-file streaming,
+or expansion of the existing 1 MiB Facility evidence limit is claimed by this batch.

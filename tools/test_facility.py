@@ -68,7 +68,9 @@ with tempfile.TemporaryDirectory() as tmp:
             with zipfile.ZipFile(packagepath,'w',compression=zipfile.ZIP_DEFLATED) as archive:
                 for name,content in entries.items():
                     archive.writestr(name,b'corrupted' if name=='evidence.bin' else content)
-            assert verify(packagepath).returncode!=0
+            rejected=verify(packagepath)
+            assert rejected.returncode==1 and 'Evidence verification failed:' in rejected.stderr
+            assert 'Unhandled exception' not in rejected.stderr
             assert verify(Path(tmp)/'missing.zip').returncode!=0
             assert verify().returncode!=0
             assert not (Path(tmp)/'report.html').exists()

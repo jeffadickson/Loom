@@ -24,7 +24,7 @@ if(args.Length>0&&args[0]=="--verify-evidence")
         Console.WriteLine($"Evidence integrity verified: version {manifest.Version}, {manifest.Files.Length} files, {manifest.Files.Sum(f=>f.Length)} bytes.");
         Console.WriteLine("Checksums do not authenticate the author. No files were extracted.");
     }
-    catch(Exception error) when(error is IOException or UnauthorizedAccessException or ArgumentException)
+    catch(Exception error) when(error is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException)
     {Console.Error.WriteLine("Evidence verification failed: "+error.Message);Environment.ExitCode=1;}
     return;
 }

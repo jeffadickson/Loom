@@ -140,7 +140,7 @@ async function detail(id){
     $('cancel-form').onsubmit=e=>{e.preventDefault();act('/requests/'+id+'/cancel',{version:d.version,reason:new FormData(e.target).get('Reason')},()=>detail(id));};
   };
   if($('amend'))$('amend').onclick=()=>requestForm(d);
-  $('history').onclick=async()=>{try{const history=await api(route('/history/Request/'+id));if(epoch!==contextEpoch)return;dialog('Request audit history','<ol class="audit">'+history.map(a=>'<li>'+escape(a.action)+' · '+escape(a.actor)+'<time>'+escape(date(a.at))+'</time><span>'+escape(a.before?.values.Status||'New')+' → '+escape(a.after?.values.Status||'Removed')+'</span></li>').join('')+'</ol>');}catch(e){$('dialog-error').textContent=e.message;}};
+  $('history').onclick=async()=>{try{const history=await api(route('/history/Request/'+id));if(epoch!==contextEpoch||sequence!==detailSequence)return;dialog('Request audit history','<ol class="audit">'+history.map(a=>'<li>'+escape(a.action)+' · '+escape(a.actor)+'<time>'+escape(date(a.at))+'</time><span>'+escape(a.before?.values.Status||'New')+' → '+escape(a.after?.values.Status||'Removed')+'</span></li>').join('')+'</ol>');}catch(e){$('dialog-error').textContent=e.message;}};
   document.querySelectorAll('[data-evidence]').forEach(b=>b.onclick=()=>download('/evidence/'+b.dataset.evidence,'Evidence.bin').catch(e=>$('dialog-error').textContent=e.message));
 }
 async function act(path,body,after,epoch=contextEpoch){

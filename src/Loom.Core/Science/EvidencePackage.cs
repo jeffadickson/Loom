@@ -27,13 +27,14 @@ public static class EvidencePackage
     {
         ArgumentNullException.ThrowIfNull(files);
         if(files.Count is <1 or >MaximumFiles)throw new InvalidDataException("Invalid evidence file count.");
+        long total=0;
         var snapshot=files.OrderBy(p=>p.Key,StringComparer.Ordinal).Select(p=>
         {
             ValidatePath(p.Key);
             if(p.Value==null||p.Value.Length>MaximumFileBytes)throw new InvalidDataException("Evidence file exceeds the size limit.");
+            if((total+=p.Value.Length)>MaximumBytes)throw new InvalidDataException("Evidence package exceeds the size limit.");
             return new KeyValuePair<string,byte[]>(p.Key,p.Value.ToArray());
         }).ToArray();
-        if(snapshot.Sum(p=>(long)p.Value.Length)>MaximumBytes)throw new InvalidDataException("Evidence package exceeds the size limit.");
         var manifest=new EvidenceManifest(1,snapshot.Select(p=>new EvidenceFile(p.Key,p.Value.Length,Hash(p.Value))).ToArray());
         using var output=new MemoryStream();
         using(var archive=new ZipArchive(output,ZipArchiveMode.Create,true))
