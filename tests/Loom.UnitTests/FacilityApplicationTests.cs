@@ -166,6 +166,19 @@ public sealed class FacilityApplicationTests : IDisposable
         Assert.Equal(404,Assert.Throws<LoomException>(()=>app.ExportRelease("south-manager","south",release.Id)).Status);
     }
 
+    [Fact] public void ExportProvenanceContainsExactValuesAndOnlySelectedImmutableRecords()
+    {
+        var app=App();var release=Released(app);var bytes=app.ExportRelease("north-manager","north",release.Id);
+        using var zip=new System.IO.Compression.ZipArchive(new MemoryStream(bytes));
+        using var reader=new StreamReader(zip.GetEntry("provenance.json")!.Open());var json=reader.ReadToEnd();
+        Assert.Contains("20.125",json);Assert.Contains("tsdb://example.test/run-1",json);
+        Assert.DoesNotContain("Waveform",json);Assert.DoesNotContain("south",json);Assert.DoesNotContain("ReleaseJob",json);
+        var doc=JsonNode.Parse(json)!;Assert.Equal("north",doc["tenant"]!.ToString());
+        Assert.Equal(9,doc["records"]!.AsArray().Count);
+        app.Register("north-manager","north","Instrument",new(){["Name"]="Unrelated",["Serial"]="UNRELATED",["Location"]="Other"});
+        Assert.Equal(bytes,app.ExportRelease("north-manager","north",release.Id));
+    }
+
     public void Dispose()=>Directory.Delete(root,true);
     private sealed class FixedClock(DateTimeOffset now):TimeProvider
     {public override DateTimeOffset GetUtcNow()=>now;}

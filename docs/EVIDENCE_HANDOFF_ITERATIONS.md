@@ -13,3 +13,4 @@ actual changes and checks; final qualification is recorded below after execution
 | 5 | Require strict manifest properties and version semantics | 11 focused checks pass, including malformed, null, unknown and duplicate JSON properties. |
 | 6 | Add standalone offline evidence verification command | Reviewed pre-host dispatch and bounded file reads; added file-verifier regression for next cumulative run. |
 | 7 | Export approved release evidence through tenant authorization | 13 focused checks pass, including offline file verification, role denial, cross-tenant denial and identical exports after restart. |
+| 8 | Include bounded provenance snapshots and handoff instructions | Reviewed nine selected records, removed payload duplication, added exact-value and unrelated-record regression. |

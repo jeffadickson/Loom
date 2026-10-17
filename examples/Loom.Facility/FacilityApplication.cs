@@ -3,6 +3,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
+using System.Text.Json;
 using Loom.Core;
 using Loom.Sqlite;
 
@@ -313,10 +314,23 @@ public sealed class FacilityApplication
         {
             var release=t.Get("Release",id);
             var result=t.Get("Result",Value(release,"Result"));
+            var request=t.Get("Request",Value(release,"Request"));
+            var review=t.Get("Review",Value(release,"Review"));
+            if(Value(request,"Status")!="Released"||Value(result,"Request")!=request.Id||
+                Value(review,"Request")!=request.Id||Value(review,"Result")!=result.Id||Value(review,"Decision")!="Approved")
+                throw new LoomException(409,"Released evidence references are inconsistent.");
+            Document WithoutPayload(Document document)
+            {var copy=document.Copy();copy.Values.Remove("Waveform");copy.Values.Remove("Html");return copy;}
+            var records=new[]{request,result,review,release}.Concat(new[]{"Campaign","Instrument","Calibration","Specimen","Procedure"}
+                .Select(type=>t.Get(type,Value(request,type)))).Select(WithoutPayload).ToArray();
+            var provenance=JsonSerializer.SerializeToUtf8Bytes(new {format="loom-facility-release",version=1,tenant,
+                releaseId=release.Id,records},Catalog.Json);
             return Loom.Core.Science.EvidencePackage.Create(new Dictionary<string,byte[]>
             {
                 ["report.html"]=Convert.FromBase64String(Value(release,"Html")),
-                ["evidence.bin"]=Convert.FromBase64String(Value(result,"Waveform"))
+                ["evidence.bin"]=Convert.FromBase64String(Value(result,"Waveform")),
+                ["provenance.json"]=provenance,
+                ["readme.txt"]=Encoding.UTF8.GetBytes("Loom Facility evidence package v1\nreport.html: released report\nevidence.bin: selected attempt raw bytes\nprovenance.json: record snapshots, exact decimal values and external dataset references\nmanifest.json: file lengths and SHA-256 digests\nVerify: dotnet Loom.Demo.dll --verify-evidence FILE.zip\nChecksums do not authenticate the author. External datasets are references only; they were not downloaded.\nContains project costs and potentially sensitive evidence. Share with authorized recipients only.\n")
             });
         });
     }
