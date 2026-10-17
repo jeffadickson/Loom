@@ -61,6 +61,12 @@ internal static class FacilityEndpoints
         routes.MapPost("/requests/{id}/release",(HttpContext c,string tenant,string id,VersionInput input)=>WireJson.Encode(facility.QueueRelease(User(c),tenant,id,input.Version)));
         routes.MapPost("/jobs/{id}/retry",(HttpContext c,string tenant,string id,VersionInput input)=>{facility.RetryRelease(User(c),tenant,id,input.Version);return Results.NoContent();});
         routes.MapGet("/releases/{id}",(HttpContext c,string tenant,string id)=>Results.File(Encoding.UTF8.GetBytes(facility.ReleasedReport(User(c),tenant,id)),"text/html; charset=utf-8","Test_Release.html"));
+        routes.MapGet("/releases/{id}/package",(HttpContext c,string tenant,string id)=>
+        {
+            c.Response.Headers.CacheControl="no-store";
+            c.Response.Headers["X-Content-Type-Options"]="nosniff";
+            return Results.File(facility.ExportRelease(User(c),tenant,id),"application/zip","Test_Evidence.zip");
+        });
         routes.MapGet("/evidence/{id}",(HttpContext c,string tenant,string id)=>Results.File(facility.Evidence(User(c),tenant,id),"application/octet-stream","Evidence.bin"));
         routes.MapGet("/history/{type}/{id}",(HttpContext c,string tenant,string type,string id)=>WireJson.Encode(facility.History(User(c),tenant,type,id)));
     }
