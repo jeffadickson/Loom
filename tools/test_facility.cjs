@@ -44,6 +44,12 @@ const fs=require('node:fs');
   await page.locator('[data-page-type=Instrument][data-offset="0"]').click();
   await page.getByText('Browser-created reference meter',{exact:true}).waitFor();
 
+  await page.locator('#search').fill('ZZ Meter 29');
+  await page.getByText('Records 1–1 of 1',{exact:true}).waitFor();
+  await page.getByText('ZZ Meter 29',{exact:true}).waitFor();
+  await page.locator('#search').fill('');
+  await page.getByText('Records 1–25 of 32',{exact:true}).waitFor();
+
   await page.getByRole('button',{name:'Test requests',exact:false}).click();
   await page.getByRole('button',{name:'New test request',exact:true}).click();
   await page.getByLabel('Request title',{exact:true}).fill('TR-002 · Follow-up stability');

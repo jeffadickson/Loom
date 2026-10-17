@@ -22,3 +22,4 @@ actual changes and checks; final qualification is recorded below after execution
 | 14 | Reject missing and oversized encoded evidence before allocation | Reviewed decode bound and rollback path; added null, empty, malformed and oversized input regression. |
 | 15 | Search all facility records through paged provider queries | JavaScript syntax checked; search resets page offsets and removes misleading current-page-only filtering. |
 | 16 | Discard stale facility responses across account and tenant changes | Reviewed request generations for load, paging, detail, download and delayed file submission; JavaScript syntax passes. |
+| 17 | Exercise package downloads search and delayed account responses in Chromium | Real browser workflow passes, including off-page search, ZIP download, mobile layout and delayed North response after South login. |
