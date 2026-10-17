@@ -99,7 +99,14 @@ public static class EvidencePackage
     private static string Hash(byte[] bytes)=>Convert.ToHexString(SHA256.HashData(bytes));
     private static void ValidatePath(string path)
     {
-        if(string.IsNullOrWhiteSpace(path)||path==ManifestPath||path.StartsWith('/')||path.Contains("..")||path.Contains('\\'))
+        // Flat lowercase names avoid extraction ambiguity across Windows, macOS and Linux.
+        if(string.IsNullOrEmpty(path)||path.Length>100||path==ManifestPath||
+            path[0]=='.'||path[^1]=='.'||path.Contains("..")||
+            path.Any(c=>!(c is >= 'a' and <= 'z' or >= '0' and <= '9' or '.' or '-' or '_')))
             throw new InvalidDataException("Invalid evidence path.");
+        var stem=path.Split('.')[0];
+        if(stem is "con" or "prn" or "aux" or "nul"||
+            stem.Length==4&&(stem.StartsWith("com",StringComparison.Ordinal)||stem.StartsWith("lpt",StringComparison.Ordinal))&&stem[3] is >= '0' and <= '9')
+            throw new InvalidDataException("Reserved evidence path.");
     }
 }

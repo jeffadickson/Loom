@@ -31,6 +31,19 @@ public sealed class EvidencePackageTests
             Assert.Throws<InvalidDataException>(()=>EvidencePackage.Verify(Edit(original,action)));
         Assert.Throws<InvalidDataException>(()=>EvidencePackage.Verify(original[..30]));
     }
+    [Fact] public void UnsafeNamesAndResourceLimitsAreRejected()
+    {
+        foreach(var name in new[]{"../raw.bin","/raw.bin","folder/raw.bin","C:raw.bin","RAW.bin","con.txt","lpt1.bin","raw.",".raw","manifest.json","raw\\data"})
+            Assert.Throws<InvalidDataException>(()=>EvidencePackage.Create(new Dictionary<string,byte[]>{[name]=[1]}));
+        Assert.Throws<InvalidDataException>(()=>EvidencePackage.Create(new Dictionary<string,byte[]>()));
+        Assert.Throws<InvalidDataException>(()=>EvidencePackage.Create(Enumerable.Range(0,33).ToDictionary(i=>"f"+i,_=>new byte[1])));
+        Assert.Throws<InvalidDataException>(()=>EvidencePackage.Create(new Dictionary<string,byte[]>{["raw.bin"]=new byte[EvidencePackage.MaximumFileBytes+1]}));
+        Assert.Throws<InvalidDataException>(()=>EvidencePackage.Create(Enumerable.Range(0,5).ToDictionary(i=>"f"+i,_=>new byte[EvidencePackage.MaximumFileBytes])));
+        Assert.Throws<InvalidDataException>(()=>EvidencePackage.Verify(new byte[EvidencePackage.MaximumBytes+1]));
+        var original=EvidencePackage.Create(new Dictionary<string,byte[]>{["raw.bin"]=[1]});
+        Assert.Throws<InvalidDataException>(()=>EvidencePackage.Verify(Edit(original,z=>{
+            z.GetEntry("raw.bin")!.Delete();Write(z,"raw.bin",new byte[EvidencePackage.MaximumFileBytes+1]);})));
+    }
     private static byte[] Edit(byte[] bytes,Action<ZipArchive> edit)
     {
         using var stream=new MemoryStream();stream.Write(bytes);
